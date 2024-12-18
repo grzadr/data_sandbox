@@ -8,7 +8,7 @@
     "files.trimTrailingWhitespace": true,
     "files.insertFinalNewline": true,
     "files.autoSave": "afterDelay",
-    "files.autoSaveDelay": 500,
+    "files.autoSaveDelay": 100,
     "editor.formatOnSaveMode": "file",
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter"

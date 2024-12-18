@@ -15,7 +15,7 @@ def validate_output_dir(path_str: str) -> Path:
     """
     output_dir = Path(path_str).resolve()
 
-    if output_dir.exists() and output_dir.is_dir():
+    if output_dir.exists() and not output_dir.is_dir():
         raise ArgumentTypeError(
             f"Output path exists but is not a directory: {output_dir}"
         )
