@@ -16,6 +16,8 @@ from typing import NamedTuple, List, Tuple
 from data_sandbox.args import validate_output_dir
 from polars import DataFrame
 from faker import Faker
+from numpy.random import randint
+from datetime import datetime
 
 
 class Arguments(NamedTuple):
@@ -78,32 +80,82 @@ def gen_num_list(count: int, divisor: int) -> List[str]:
 
 
 def gen_name_list(faker: Faker, count: int, divisor: int) -> List[str]:
-
     unique_count, divisor = calc_unique_count(count, divisor)
-    assert(unique_count <= count)
-    return [
-        faker.company() for _ in range(unique_count) for _ in range(divisor)
-    ]
+    assert unique_count <= count
+    names = [faker.company() for _ in range(unique_count)]
+    return [n for n in names for _ in range(divisor)]
 
 
-def generate_cost_centers(faker: Faker, num_records: int) -> DataFrame:
+def create_cost_centers(faker: Faker, num_records: int) -> DataFrame:
     return DataFrame(
         {
             "CostCenter": gen_num_list(count=num_records, divisor=10),
             "CostCenterName": gen_name_list(
-                faker=faker, count=num_records, divisor=10
-            ),
-            "SubOrganisation": gen_name_list(
                 faker=faker, count=num_records, divisor=100
             ),
-            "Organisation": gen_name_list(
+            "SubOrganisation": gen_name_list(
                 faker=faker, count=num_records, divisor=1000
             ),
-            "CompanyName": gen_name_list(
+            "Organisation": gen_name_list(
                 faker=faker, count=num_records, divisor=10000
+            ),
+            "CompanyName": gen_name_list(
+                faker=faker, count=num_records, divisor=1000000
             ),
             "CompanyNumber": gen_num_list(count=num_records, divisor=10),
         },
+    )
+
+
+def gen_binary_list(count: int) -> List[str]:
+    return [str(r) for r in randint(0, 2, count)]
+
+
+def create_employees(faker: Faker, num_records: int) -> DataFrame:
+    return DataFrame(
+        {
+            "EmployeeId": gen_num_list(num_records, 1),
+            "EmployeeName": [faker.name() for _ in range(num_records)],
+            "CostCenter": gen_num_list(count=num_records, divisor=10),
+            "IsEmployed": gen_binary_list(count=num_records),
+            "isActive": gen_binary_list(count=num_records),
+        }
+    )
+
+
+def format_date(year: int, month: int, day: int) -> str:
+    date = datetime(year, month, day)
+    return date.strftime("%b%y").upper()
+
+
+def gen_random_date(lower_bound: int, upper_bound: int) -> str:
+    year = randint(lower_bound, upper_bound + 1)
+    month = randint(1, 13)
+    return format_date(year=year, month=month, day=1)
+
+
+def gen_dates_list(num_rows: int, lower_bound: int, upper_bound: int) -> List[str]:
+    return [
+        gen_random_date(lower_bound=lower_bound, upper_bound=upper_bound)
+        for _ in range(num_rows)
+    ]
+
+def gen_worktime(high: int) -> str:
+    str(randint(low=1, high=high))
+
+
+def gen_worktime_list(num_rows: int) -> List[str]:
+
+
+
+def create_working_time(faker: Faker, num_records: int) -> DataFrame:
+    return DataFrame(
+        {
+            "EmployeeId": gen_num_list(count=num_records, divisor=10),
+            "Date": gen_dates_list(
+                num_rows=num_records, lower_bound=2000, upper_bound=2025
+            ),
+        }
     )
 
 
@@ -112,20 +164,18 @@ def main():
     args = parse_arguments()
     print(args)
 
-
-    assert(calc_unique_count(100, 10) == (10, 10))
-    assert(calc_unique_count(100, 100) == (1, 100))
-    assert(calc_unique_count(100, 1000) == (1, 100))
-
     faker = Faker()
     # faker.add_provider(company)
     Faker.seed(args.seed)
 
-    cost_centers = generate_cost_centers(
-        faker=faker, num_records=args.num_rows
+    cost_centers = create_cost_centers(faker=faker, num_records=args.num_rows)
+    employees = create_employees(faker=faker, num_records=args.num_rows * 10)
+    working_time = create_working_time(
+        faker=faker, num_records=args.num_rows * 100
     )
 
     print(cost_centers)
+    print(employees)
 
 
 if __name__ == "__main__":
