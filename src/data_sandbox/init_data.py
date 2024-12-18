@@ -68,18 +68,18 @@ def parse_arguments() -> Arguments:
 
 
 def calc_unique_count(count: int, divisor: int) -> Tuple[int, int]:
-    return (count // divisor, divisor) if divisor <= count else (1, 1)
+    return (count // divisor, divisor) if divisor < count else (1, count)
 
 
 def gen_num_list(count: int, divisor: int) -> List[str]:
-    unique_count = calc_unique_count(count, divisor)
+    unique_count, divisor = calc_unique_count(count, divisor)
 
     return [f"{i + 1}" for i in range(unique_count) for _ in range(divisor)]
 
 
 def gen_name_list(faker: Faker, count: int, divisor: int) -> List[str]:
 
-    unique_count = calc_unique_count(count, divisor)
+    unique_count, divisor = calc_unique_count(count, divisor)
     assert(unique_count <= count)
     return [
         faker.company() for _ in range(unique_count) for _ in range(divisor)
@@ -114,8 +114,8 @@ def main():
 
 
     assert(calc_unique_count(100, 10) == (10, 10))
-    assert(calc_unique_count(100, 100) == (1))
-    assert(calc_unique_count(100, 1000) == 1)
+    assert(calc_unique_count(100, 100) == (1, 100))
+    assert(calc_unique_count(100, 1000) == (1, 100))
 
     faker = Faker()
     # faker.add_provider(company)
