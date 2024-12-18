@@ -10,9 +10,13 @@ Example:
 """
 
 import sys
-from argparse import ArgumentParser, ArgumentTypeError
+from argparse import ArgumentParser
 from pathlib import Path
 from typing import NamedTuple
+from data_sandbox.args import validate_output_dir
+from polars import DataFrame
+from faker import Faker
+from numpy.random import randint as np_randint
 
 
 class Arguments(NamedTuple):
@@ -23,29 +27,8 @@ class Arguments(NamedTuple):
     """
 
     output_dir: Path
-
-
-def validate_output_dir(path_str: str) -> Path:
-    """Validates and creates the output directory.
-
-    Args:
-        path_str: String representation of the directory path
-
-    Returns:
-        Path object representing the validated output directory
-
-    Raises:
-        ArgumentTypeError: If path exists but is not a directory
-    """
-    output_dir = Path(path_str).resolve()
-
-    if output_dir.exists() and output_dir.is_dir():
-        raise ArgumentTypeError(
-            f"Output path exists but is not a directory: {output_dir}"
-        )
-
-    output_dir.mkdir(mode=644, parents=True, exist_ok=True)
-    return output_dir
+    num_rows: int
+    seed: int
 
 
 def parse_arguments() -> Arguments:
@@ -62,15 +45,39 @@ def parse_arguments() -> Arguments:
         help="Directory path where data will be stored",
     )
 
+    parser.add_argument(
+        "-n",
+        "--num-rows",
+        type=int,
+        help="Number of records to generate",
+        default=1000,
+    )
+
+    parser.add_argument(
+        "-s",
+        "--seed",
+        type=int,
+        help="Random seed for generating values",
+        default=42,
+    )
+
     args = parser.parse_args()
 
-    return Arguments(output_dir=args.output_dir)
+    return Arguments(
+        output_dir=args.output_dir, num_rows=args.num_rows, seed=args.seed
+    )
+
+
+def generate_cost_centers(faker: Faker) -> DataFrame:
+    return
 
 
 def main():
     """Main entry point of the script."""
     args = parse_arguments()
     print(args)
+
+    faker = Faker(args.seed)
 
 
 if __name__ == "__main__":
