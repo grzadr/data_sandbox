@@ -30,6 +30,8 @@ class Arguments(NamedTuple):
     output_dir: Path
     num_rows: int
     seed: int
+    worker_multi: int
+    time_multi: int
 
 
 def parse_arguments() -> Arguments:
@@ -62,10 +64,28 @@ def parse_arguments() -> Arguments:
         default=42,
     )
 
+    parser.add_argument(
+        "--worker_multiplier",
+        type=int,
+        help="Random seed for generating values",
+        default=50,
+    )
+
+    parser.add_argument(
+        "--time_multiplier",
+        type=int,
+        help="Random seed for generating values",
+        default=1000,
+    )
+
     args = parser.parse_args()
 
     return Arguments(
-        output_dir=args.output_dir, num_rows=args.num_rows, seed=args.seed
+        output_dir=args.output_dir,
+        num_rows=args.num_rows,
+        seed=args.seed,
+        worker_multi=args.worker_multiplier,
+        time_multi=args.time_multiplier,
     )
 
 
@@ -128,32 +148,58 @@ def format_date(year: int, month: int, day: int) -> str:
     return date.strftime("%b%y").upper()
 
 
-def gen_random_date(lower_bound: int, upper_bound: int) -> str:
-    year = randint(lower_bound, upper_bound + 1)
+def gen_random_date(low: int, high: int) -> str:
+    year = randint(low, high + 1)
     month = randint(1, 13)
     return format_date(year=year, month=month, day=1)
 
 
-def gen_dates_list(num_rows: int, lower_bound: int, upper_bound: int) -> List[str]:
-    return [
-        gen_random_date(lower_bound=lower_bound, upper_bound=upper_bound)
-        for _ in range(num_rows)
-    ]
-
-def gen_worktime(high: int) -> str:
-    str(randint(low=1, high=high))
+def gen_dates_list(num_rows: int, low: int, high: int) -> List[str]:
+    return [gen_random_date(low=low, high=high) for _ in range(num_rows)]
 
 
-def gen_worktime_list(num_rows: int) -> List[str]:
+def format_number(n: int, divisor: int, sep: str) -> str:
+    minus = "-" if n < 0 else ""
+
+    value = str(abs(n))
+    value_l = len(value)
+
+    if value_l <= divisor:
+        return f"{minus}{value}"
+
+    first = 0
+    start = value_l - ((value_l // divisor) * divisor)
+
+    result = []
+
+    for last in range(start, value_l, divisor):
+        result.append(value[first:last])
+        first = last
+
+    result.append(value[last:])
+
+    return f"{minus}{sep.join(result)}"
 
 
+def gen_worktime(low: int, high: int, divisor: int = 3, sep: str = ",") -> str:
+    return format_number(randint(low=low, high=high), divisor=divisor, sep=sep)
 
-def create_working_time(faker: Faker, num_records: int) -> DataFrame:
+
+def gen_worktime_list(num_rows: int, low: int, high: int) -> List[str]:
+    return [gen_worktime(low=low, high=high) for _ in range(num_rows)]
+
+
+def create_working_time(
+    faker: Faker, num_records: int, worker_divisor: int
+) -> DataFrame:
     return DataFrame(
         {
-            "EmployeeId": gen_num_list(count=num_records, divisor=10),
-            "Date": gen_dates_list(
-                num_rows=num_records, lower_bound=2000, upper_bound=2025
+            "EmployeeId": gen_num_list(
+                count=num_records, divisor=worker_divisor
+            ),
+            "Date": gen_dates_list(num_rows=num_records, low=2000, high=2025),
+            "WorkingTime": gen_worktime_list(
+                num_rows=num_records, low=1, high=99999
             ),
         }
     )
@@ -168,15 +214,22 @@ def main():
     # faker.add_provider(company)
     Faker.seed(args.seed)
 
-    cost_centers = create_cost_centers(faker=faker, num_records=args.num_rows)
-    employees = create_employees(faker=faker, num_records=args.num_rows * 10)
-    working_time = create_working_time(
-        faker=faker, num_records=args.num_rows * 100
+    data = {
+        "cost_centers": create_cost_centers(faker=faker, num_records=args.num_rows),
+        "employees": create_employees(
+        faker=faker, num_records=args.num_rows * args.worker_multi
+    ),
+        "working_time": create_working_time(
+        faker=faker,
+        num_records=args.num_rows * args.time_multi,
+        worker_divisor=args.worker_multi,
     )
+    }
 
-    print(cost_centers)
-    print(employees)
-
+    for name, df in data.items():
+        output_path = args.output_dir / f"{name}.parquet"
+        print(output_path)
+        df.write_parquet(args.output_dir / f"{name}.parquet")
 
 if __name__ == "__main__":
     sys.exit(main())

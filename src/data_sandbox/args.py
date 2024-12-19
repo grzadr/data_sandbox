@@ -20,5 +20,5 @@ def validate_output_dir(path_str: str) -> Path:
             f"Output path exists but is not a directory: {output_dir}"
         )
 
-    output_dir.mkdir(mode=644, parents=True, exist_ok=True)
+    output_dir.mkdir(mode=0o744, parents=True, exist_ok=True)
     return output_dir
