@@ -12,7 +12,16 @@ Example:
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import NamedTuple, List, Tuple
+from typing import (
+    NamedTuple,
+    List,
+    Tuple,
+    Generator,
+    TypeAlias,
+    Callable,
+    Dict,
+    Any,
+)
 from data_sandbox.args import validate_output_dir
 from polars import DataFrame
 from faker import Faker
@@ -205,6 +214,54 @@ def create_working_time(
     )
 
 
+DataFrameGenerator: TypeAlias = Generator[Tuple[str, DataFrame], None, None]
+DataFrameCreator: TypeAlias = Callable[..., DataFrame]
+CreatorConfig: TypeAlias = Tuple[DataFrameCreator, Dict[str, Any]]
+
+
+def generate_dataframes(
+    faker: Faker, num_rows: int, worker_multi: int, time_multi: int
+) -> DataFrameGenerator:
+    configs: Dict[str, CreatorConfig] = {
+        "cost_centers": (
+            create_cost_centers,
+            {"faker": faker, "num_records": num_rows},
+        ),
+        "employees": (
+            create_employees,
+            {"faker": faker, "num_records": num_rows * worker_multi},
+        ),
+        "working_time": (
+            create_working_time,
+            {
+                "faker": faker,
+                "num_records": num_rows * time_multi,
+                "worker_divisor": worker_multi,
+            },
+        ),
+    }
+
+    for name, (creator_func, params) in configs.items():
+        print(f"Creating {name}")
+        df = creator_func(**params)
+        yield name, df
+
+
+def save_dataframes(
+    output_dir: Path,
+    faker: Faker,
+    num_rows: int,
+    worker_multi: int,
+    time_multi: int,
+) -> None:
+    for name, df in generate_dataframes(
+        faker, num_rows, worker_multi, time_multi
+    ):
+        output_path = output_dir / f"{name}.parquet"
+        print(f"Saving {output_path}")
+        df.write_parquet(output_path)
+
+
 def main():
     """Main entry point of the script."""
     args = parse_arguments()
@@ -214,22 +271,14 @@ def main():
     # faker.add_provider(company)
     Faker.seed(args.seed)
 
-    data = {
-        "cost_centers": create_cost_centers(faker=faker, num_records=args.num_rows),
-        "employees": create_employees(
-        faker=faker, num_records=args.num_rows * args.worker_multi
-    ),
-        "working_time": create_working_time(
+    save_dataframes(
+        output_dir=args.output_dir,
         faker=faker,
-        num_records=args.num_rows * args.time_multi,
-        worker_divisor=args.worker_multi,
+        num_rows=args.num_rows,
+        worker_multi=args.worker_multi,
+        time_multi=args.time_multi
     )
-    }
 
-    for name, df in data.items():
-        output_path = args.output_dir / f"{name}.parquet"
-        print(output_path)
-        df.write_parquet(args.output_dir / f"{name}.parquet")
 
 if __name__ == "__main__":
     sys.exit(main())
