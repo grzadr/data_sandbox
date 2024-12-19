@@ -9,24 +9,30 @@ Example:
     $ python init_data_dir.py /path/to/output
 """
 
+import logging
 import sys
 from argparse import ArgumentParser
+from datetime import datetime
 from pathlib import Path
 from typing import (
-    NamedTuple,
-    List,
-    Tuple,
-    Generator,
-    TypeAlias,
+    Any,
     Callable,
     Dict,
-    Any,
+    Generator,
+    List,
+    NamedTuple,
+    Tuple,
+    TypeAlias,
 )
-from data_sandbox.args import validate_output_dir
-from polars import DataFrame
+
 from faker import Faker
 from numpy.random import randint
-from datetime import datetime
+from polars import DataFrame
+
+from data_sandbox.args import validate_output_dir
+from data_sandbox.logging import measure_time, setup_logging
+
+logger = setup_logging(log_level=logging.INFO)
 
 
 class Arguments(NamedTuple):
@@ -115,6 +121,7 @@ def gen_name_list(faker: Faker, count: int, divisor: int) -> List[str]:
     return [n for n in names for _ in range(divisor)]
 
 
+@measure_time()
 def create_cost_centers(faker: Faker, num_records: int) -> DataFrame:
     return DataFrame(
         {
@@ -140,6 +147,7 @@ def gen_binary_list(count: int) -> List[str]:
     return [str(r) for r in randint(0, 2, count)]
 
 
+@measure_time()
 def create_employees(faker: Faker, num_records: int) -> DataFrame:
     return DataFrame(
         {
@@ -198,9 +206,8 @@ def gen_worktime_list(num_rows: int, low: int, high: int) -> List[str]:
     return [gen_worktime(low=low, high=high) for _ in range(num_rows)]
 
 
-def create_working_time(
-    faker: Faker, num_records: int, worker_divisor: int
-) -> DataFrame:
+@measure_time()
+def create_working_time(num_records: int, worker_divisor: int) -> DataFrame:
     return DataFrame(
         {
             "EmployeeId": gen_num_list(
@@ -219,6 +226,7 @@ DataFrameCreator: TypeAlias = Callable[..., DataFrame]
 CreatorConfig: TypeAlias = Tuple[DataFrameCreator, Dict[str, Any]]
 
 
+@measure_time()
 def generate_dataframes(
     faker: Faker, num_rows: int, worker_multi: int, time_multi: int
 ) -> DataFrameGenerator:
@@ -234,7 +242,6 @@ def generate_dataframes(
         "working_time": (
             create_working_time,
             {
-                "faker": faker,
                 "num_records": num_rows * time_multi,
                 "worker_divisor": worker_multi,
             },
@@ -276,7 +283,7 @@ def main():
         faker=faker,
         num_rows=args.num_rows,
         worker_multi=args.worker_multi,
-        time_multi=args.time_multi
+        time_multi=args.time_multi,
     )
 
 

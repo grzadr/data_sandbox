@@ -1,5 +1,6 @@
-from pathlib import Path
 from argparse import ArgumentTypeError
+from pathlib import Path
+
 
 def validate_output_dir(path_str: str) -> Path:
     """Validates and creates the output directory.
