@@ -12,6 +12,7 @@ python = "^3.11"
 polars = "1.17.1"
 faker = "^33.1.0"
 numpy = "^2.2.0"
+pytest-cov = "^6.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
@@ -52,3 +53,30 @@ known_first_party = ["black", "blib2to3", "blackd", "_black_version"]
 [tool.black]
 line-length = 79
 target-version = ["py311"]
+
+[tool.pytest.ini_options]
+minversion = "8.3.4"
+addopts = "-ra -q --cov=data_sandbox --cov-report=term-missing"
+testpaths = ["tests"]
+pythonpath = ["src"]
+filterwarnings = ["error", "ignore::DeprecationWarning", "ignore::UserWarning"]
+markers = [
+    "unit: marks tests as unit tests",
+    "integration: marks tests as integration tests",
+    "benchmark: marks tests as performance benchmarks",
+]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "pass",
+]
+show_missing = true
+fail_under = 80
