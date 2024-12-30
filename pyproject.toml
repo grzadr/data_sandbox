@@ -14,6 +14,7 @@ faker = "^33.1.0"
 numpy = "^2.2.0"
 pytest-cov = "^6.0.0"
 pyarrow = "^18.1.0"
+pydantic = "^2.10.4"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
@@ -42,6 +43,13 @@ show_error_codes = true
 no_implicit_optional = true
 warn_unused_ignores = true
 plugins = ["pydantic.mypy"]
+
+[tool.pylint.'MESSAGES CONTROL']
+disable = [
+    "C0114", # missing-module-docstring
+    "C0115", # missing-module-docstring
+    "C0116", # missing-function-docstring,
+]
 
 [tool.isort]
 atomic = true
