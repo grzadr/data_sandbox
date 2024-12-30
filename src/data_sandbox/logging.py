@@ -1,7 +1,7 @@
 import logging
 import time
 from functools import wraps
-from typing import Optional
+from typing import Callable, Optional, ParamSpec, TypeVar
 
 
 def setup_logging(log_level: int = logging.INFO) -> logging.Logger:
@@ -24,15 +24,21 @@ def setup_logging(log_level: int = logging.INFO) -> logging.Logger:
     return logger
 
 
-def measure_time(custom_logger: Optional[logging.Logger] = None):
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def measure_time(
+    custom_logger: Optional[logging.Logger] = None,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """
-    Execution time decorator
+    Execution time decorator that measures and logs function execution duration.
     """
     log = custom_logger or logging.getLogger("app")
 
-    def decorator(func):
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             start = time.perf_counter()
             result = func(*args, **kwargs)
             elapsed = time.perf_counter() - start
