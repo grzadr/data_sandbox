@@ -10,7 +10,6 @@ Example:
 """
 
 import logging
-import sys
 from argparse import ArgumentParser
 from datetime import datetime
 from pathlib import Path
@@ -19,6 +18,7 @@ from typing import (
     Callable,
     Dict,
     Generator,
+    Iterator,
     List,
     NamedTuple,
     Tuple,
@@ -102,6 +102,37 @@ def parse_arguments() -> Arguments:
         worker_multi=args.worker_multiplier,
         time_multi=args.time_multiplier,
     )
+
+
+class DividedCount(NamedTuple):
+    size: int
+    groups: int
+    reminder: int
+
+    @classmethod
+    def new(cls, n: int, div: int) -> "DividedCount":
+        if n < 1 or div < 1:
+            raise ValueError(f"n: {n} and div: {div} must be positive")
+
+        if n <= div:
+            return cls(size=1, groups=n, reminder=0)
+
+        return cls(
+            size=div,
+            groups=n // div,
+            reminder=n % div,
+        )
+
+    def __len__(self) -> int:
+        return self.groups + (1 if self.reminder else 0)
+
+    def __iter__(self) -> Iterator[int]:
+        for i in range(self.groups):
+            for _ in range(self.size):
+                yield i
+
+        for _ in range(self.reminder):
+            yield i + 1
 
 
 def calc_unique_count(count: int, divisor: int) -> Tuple[int, int]:
@@ -269,13 +300,12 @@ def save_dataframes(
         df.write_parquet(output_path)
 
 
-def main():
+def main() -> None:
     """Main entry point of the script."""
     args = parse_arguments()
     print(args)
 
     faker = Faker()
-    # faker.add_provider(company)
     Faker.seed(args.seed)
 
     save_dataframes(
@@ -288,4 +318,4 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
