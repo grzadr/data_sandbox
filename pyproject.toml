@@ -9,12 +9,14 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-polars = "1.17.1"
+polars = "^1.17.1"
 faker = "^33.1.0"
 numpy = "^2.2.0"
 pytest-cov = "^6.0.0"
 pyarrow = "^18.1.0"
 pydantic = "^2.10.4"
+gprof2dot = "^2024.6.6"
+line-profiler = "^4.2.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
