@@ -370,6 +370,7 @@ DataFrameCreator: TypeAlias = Callable[..., DataFrame]
 CreatorConfig: TypeAlias = Tuple[DataFrameCreator, Dict[str, Any]]
 
 
+@measure_time()
 def create_dataframe_config(
     num_rows: int,
     batch_size: int,
@@ -439,6 +440,22 @@ def append_to_parquet(new_data: pl.DataFrame, file_path: str | Path) -> None:
     pl.concat([existing, new_data.lazy()]).collect().write_parquet(file_path)
 
 
+@measure_time()
+def save_parquet(
+    output_dir: Path,
+    name: str,
+    it: Iterator[DataFrame],
+) -> None:
+    initial = next(it)
+    output_path = output_dir / f"{name}.parquet"
+
+    recreate_parquet(data=initial, file_path=output_path)
+
+    for data in it:
+        append_to_parquet(data, output_path)
+
+
+@measure_time()
 def create_dataframes(
     output_dir: Path,
     faker: Faker,
@@ -457,14 +474,11 @@ def create_dataframes(
     )
 
     for name, (gen, params) in config.items():
-        it = gen(**params)
-        initial = next(it)
-        output_path = output_dir / f"{name}.parquet"
-
-        recreate_parquet(data=initial, file_path=output_path)
-
-        for data in it:
-            append_to_parquet(data, output_path)
+        save_parquet(
+            output_dir=output_dir,
+            name=name,
+            it=gen(**params),
+        )
 
     # for name, df in generate_dataframes(
     #     faker, num_rows, worker_multi, time_multi
