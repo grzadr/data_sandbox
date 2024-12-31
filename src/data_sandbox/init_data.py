@@ -32,7 +32,7 @@ from numpy.random import randint
 from polars import DataFrame
 
 from data_sandbox.args import validate_output_dir
-from data_sandbox.logging import measure_time, setup_logging
+from data_sandbox.logger import measure_time, setup_logging
 
 logger = setup_logging(log_level=logging.INFO)
 
