@@ -3,7 +3,13 @@ from typing import List
 import pytest
 
 from data_sandbox import init_data
-from data_sandbox.init_data import DividedCount
+from data_sandbox.init_data import (
+    DividedCount,
+    gen_batched_name_list,
+    gen_batched_num_list,
+    gen_labels_with_func,
+    safe_iter,
+)
 
 
 @pytest.mark.parametrize(
@@ -70,4 +76,85 @@ def test_divided_count_len(n: int, div: int, expected: int) -> None:
 def test_divided_count_iter(n: int, div: int, expected: List[int]) -> None:
     result = list(DividedCount.new(n=n, div=div))
     print(result)
+    assert result == expected
+
+
+abc = ["A", "B", "C"]
+
+
+@pytest.mark.parametrize(
+    "n,div,labels,expected",
+    [
+        (1, 1, abc, ["A"]),
+        (7, 3, abc, ["A"] * 3 + ["B"] * 3 + ["C"]),
+    ],
+)
+def test_gen_labels_with_func(
+    n: int, div: int, labels: List[str], expected: List[str]
+) -> None:
+    count = DividedCount.new(n=n, div=div)
+
+    labeler = iter(labels)
+
+    def f() -> str:
+        return next(labeler)
+
+    assert list(gen_labels_with_func(count=count, f=f)) == expected
+
+
+@pytest.mark.parametrize(
+    "n,labels,expected",
+    [
+        (0, abc, []),
+        (1, abc, ["A"]),
+        (3, abc, abc),
+        (4, abc, abc),
+    ],
+)
+def test_safe_iter(n: int, labels: List[str], expected: List[str]) -> None:
+    assert list(safe_iter(iter(labels), n)) == expected
+
+
+@pytest.mark.parametrize(
+    "count,groups,batch,expected",
+    [
+        (1, 1, 3, [[0]]),
+        (7, 3, 3, [[0, 0, 0], [1, 1, 1], [2]]),
+        (10, 1, 10, [list(range(10))]),
+    ],
+)
+def test_gen_batched_num_list(
+    count: int, groups: int, batch: int, expected: List[List[int]]
+) -> None:
+    result = list(
+        gen_batched_num_list(count=count, groups=groups, batch_size=batch)
+    )
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "count,groups,batch,labels,expected",
+    [
+        (1, 1, 3, abc, [["A"]]),
+        (7, 3, 3, abc, [["A"] * 3, ["B"] * 3, ["C"]]),
+        (7, 3, 4, abc, [["A"] * 3 + ["B"], ["B"] * 2 + ["C"]]),
+    ],
+)
+def test_gen_batched_name_list(
+    count: int,
+    groups: int,
+    batch: int,
+    labels: List[str],
+    expected: List[List[str]],
+) -> None:
+    it = iter(labels)
+
+    def f() -> str:
+        return next(it)
+
+    result = list(
+        gen_batched_name_list(
+            count=count, groups=groups, batch_size=batch, f=f
+        )
+    )
     assert result == expected
