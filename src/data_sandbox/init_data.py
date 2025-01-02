@@ -10,8 +10,10 @@ Example:
 """
 
 import logging
+import string
 from argparse import ArgumentParser
 from datetime import datetime
+from itertools import combinations_with_replacement as comb_with_repl
 from pathlib import Path
 from typing import (
     Any,
@@ -22,7 +24,6 @@ from typing import (
     List,
     NamedTuple,
     Tuple,
-    TypeAlias,
     TypeVar,
 )
 
@@ -212,46 +213,14 @@ def gen_name_list(faker: Faker, count: int, divisor: int) -> List[str]:
     return [n for n in names for _ in range(divisor)]
 
 
-def gen_batched_cost_centers(
-    faker: Faker, num_records: int, batch_size: int
+def gen_batched_dataframe(
+    specs: Dict[str, Iterator[object]],
+    num_records: int,
+    batch_size: int,
 ) -> Iterator[DataFrame]:
-    f = faker.company
-    frame = {
-        "CostCenter": gen_batched_num_list(
-            count=num_records, groups=1, batch_size=batch_size
-        ),
-        "CostCenterName": gen_batched_name_list(
-            count=num_records,
-            groups=1,
-            batch_size=batch_size,
-            f=f,
-        ),
-        "SubOrganisation": gen_batched_name_list(
-            count=num_records,
-            groups=1000,
-            batch_size=batch_size,
-            f=f,
-        ),
-        "Organisation": gen_batched_name_list(
-            count=num_records,
-            groups=10000,
-            batch_size=batch_size,
-            f=f,
-        ),
-        "CompanyName": gen_batched_name_list(
-            count=num_records,
-            groups=1000000,
-            batch_size=batch_size,
-            f=f,
-        ),
-        "CompanyNumber": gen_batched_num_list(
-            count=num_records, groups=1000000, batch_size=batch_size
-        ),
-    }
-
     for _ in range(0, num_records, batch_size):
         data = {}
-        for col, it in frame.items():
+        for col, it in specs.items():
             try:
                 values = next(it)
             except StopIteration as s:
@@ -262,6 +231,47 @@ def gen_batched_cost_centers(
             data[col] = values
 
         yield DataFrame(data)
+
+
+def gen_batched_cost_centers(
+    num_records: int, batch_size: int, rand_str: Callable[[], str]
+) -> Iterator[DataFrame]:
+    specs = {
+        "CostCenter": gen_batched_num_list(
+            count=num_records, groups=1, batch_size=batch_size
+        ),
+        "CostCenterName": gen_batched_name_list(
+            count=num_records,
+            groups=1,
+            batch_size=batch_size,
+            f=rand_str,
+        ),
+        "SubOrganisation": gen_batched_name_list(
+            count=num_records,
+            groups=1000,
+            batch_size=batch_size,
+            f=rand_str,
+        ),
+        "Organisation": gen_batched_name_list(
+            count=num_records,
+            groups=10000,
+            batch_size=batch_size,
+            f=rand_str,
+        ),
+        "CompanyName": gen_batched_name_list(
+            count=num_records,
+            groups=1000000,
+            batch_size=batch_size,
+            f=rand_str,
+        ),
+        "CompanyNumber": gen_batched_num_list(
+            count=num_records, groups=1000000, batch_size=batch_size
+        ),
+    }
+
+    return gen_batched_dataframe(
+        specs=specs, num_records=num_records, batch_size=batch_size
+    )
 
 
 @measure_time()
@@ -287,20 +297,43 @@ def create_cost_centers(faker: Faker, num_records: int) -> DataFrame:
     )
 
 
-def gen_binary_list(count: int) -> List[str]:
-    return [str(r) for r in randint(0, 2, count)]
+def gen_batched_binary_list(
+    count: int, batch_size: int
+) -> Iterator[List[str]]:
+    it = iter(map(str, randint(0, 2, count)))
+
+    for _ in range(0, count, batch_size):
+        yield list(safe_iter(it, batch_size))
 
 
-@measure_time()
-def create_employees(faker: Faker, num_records: int) -> DataFrame:
-    return DataFrame(
-        {
-            "EmployeeId": gen_num_list(num_records, 1),
-            "EmployeeName": [faker.name() for _ in range(num_records)],
-            "CostCenter": gen_num_list(count=num_records, divisor=10),
-            "IsEmployed": gen_binary_list(count=num_records),
-            "isActive": gen_binary_list(count=num_records),
-        }
+def gen_batched_employees(
+    num_records: int,
+    batch_size: int,
+    rand_str: Callable[[], str],
+) -> Iterator[DataFrame]:
+    specs = {
+        "EmployeeId": gen_batched_num_list(
+            count=num_records, groups=1, batch_size=batch_size
+        ),
+        "EmployeeName": gen_batched_name_list(
+            count=num_records,
+            groups=1,
+            batch_size=batch_size,
+            f=rand_str,
+        ),
+        "CostCenter": gen_batched_num_list(
+            count=num_records, groups=100, batch_size=batch_size
+        ),
+        "IsEmployed": gen_batched_binary_list(
+            count=num_records, batch_size=batch_size
+        ),
+        "isActive": gen_batched_binary_list(
+            count=num_records, batch_size=batch_size
+        ),
+    }
+
+    return gen_batched_dataframe(
+        specs=specs, num_records=num_records, batch_size=batch_size
     )
 
 
@@ -365,32 +398,31 @@ def create_working_time(num_records: int, worker_divisor: int) -> DataFrame:
     )
 
 
-DataFrameGenerator: TypeAlias = Generator[Tuple[str, DataFrame], None, None]
-DataFrameCreator: TypeAlias = Callable[..., DataFrame]
-CreatorConfig: TypeAlias = Tuple[DataFrameCreator, Dict[str, Any]]
-
-
 @measure_time()
 def create_dataframe_config(
     num_rows: int,
     batch_size: int,
-    faker: Faker,
     worker_multi: int,
     time_multi: int,
+    rand_str: Callable[[], str],
 ) -> Dict[str, Tuple]:
     return {
         "cost_centers": (
             gen_batched_cost_centers,
             {
-                "faker": faker,
+                "rand_str": rand_str,
                 "num_records": num_rows,
                 "batch_size": batch_size,
             },
         ),
-        # "employees": (
-        #     create_employees,
-        #     {"faker": faker, "num_records": num_rows * worker_multi},
-        # ),
+        "employees": (
+            gen_batched_employees,
+            {
+                "rand_str": rand_str,
+                "num_records": num_rows * worker_multi,
+                "batch_size": batch_size,
+            },
+        ),
         # "working_time": (
         #     create_working_time,
         #     {
@@ -399,34 +431,6 @@ def create_dataframe_config(
         #     },
         # ),
     }
-
-
-@measure_time()
-def generate_dataframes(
-    faker: Faker, num_rows: int, worker_multi: int, time_multi: int
-) -> DataFrameGenerator:
-    configs: Dict[str, CreatorConfig] = {
-        "cost_centers": (
-            create_cost_centers,
-            {"faker": faker, "num_records": num_rows},
-        ),
-        "employees": (
-            create_employees,
-            {"faker": faker, "num_records": num_rows * worker_multi},
-        ),
-        "working_time": (
-            create_working_time,
-            {
-                "num_records": num_rows * time_multi,
-                "worker_divisor": worker_multi,
-            },
-        ),
-    }
-
-    for name, (creator_func, params) in configs.items():
-        print(f"Creating {name}")
-        df = creator_func(**params)
-        yield name, df
 
 
 def recreate_parquet(data: pl.DataFrame, file_path: str | Path) -> None:
@@ -458,19 +462,19 @@ def save_parquet(
 @measure_time()
 def create_dataframes(
     output_dir: Path,
-    faker: Faker,
     num_rows: int,
     batch_size: int,
     worker_multi: int,
     time_multi: int,
+    rand_str: Callable[[], str],
 ) -> None:
 
     config = create_dataframe_config(
-        faker=faker,
         num_rows=num_rows,
         batch_size=batch_size,
         worker_multi=worker_multi,
         time_multi=time_multi,
+        rand_str=rand_str,
     )
 
     for name, (gen, params) in config.items():
@@ -480,29 +484,37 @@ def create_dataframes(
             it=gen(**params),
         )
 
-    # for name, df in generate_dataframes(
-    #     faker, num_rows, worker_multi, time_multi
-    # ):
-    #     output_path = output_dir / f"{name}.parquet"
-    #     print(f"Saving {output_path}")
-    #     df.write_parquet(output_path)
+
+class StringGenerator:
+    def __init__(self, length: int = 32) -> None:
+        self.length = length
+        self._iterator = self._create_iterator()
+
+    def _create_iterator(self) -> Iterator[str]:
+        chars = string.ascii_lowercase + string.digits
+        return ("".join(s) for s in comb_with_repl(chars, self.length))
+
+    def next(self) -> str:
+        return next(self._iterator)
+
+def create_string_generator() -> Callable[[], str]:
+    generator = StringGenerator()
+    return generator.next
 
 
+@measure_time()
 def main() -> None:
     """Main entry point of the script."""
     args = parse_arguments()
     print(args)
 
-    faker = Faker()
-    Faker.seed(args.seed)
-
     create_dataframes(
         output_dir=args.output_dir,
-        faker=faker,
         num_rows=args.num_rows,
         batch_size=args.batch_size,
         worker_multi=args.worker_multi,
         time_multi=args.time_multi,
+        rand_str=create_string_generator(),
     )
 
 
