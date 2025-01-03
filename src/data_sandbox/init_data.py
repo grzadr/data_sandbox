@@ -31,6 +31,7 @@ import polars as pl
 from faker import Faker
 from numpy.random import randint
 from polars import DataFrame
+from random import shuffle
 
 from data_sandbox.args import validate_output_dir
 from data_sandbox.logger import measure_time, setup_logging
@@ -276,7 +277,6 @@ def gen_batched_cost_centers(
 
 @measure_time()
 def create_cost_centers(faker: Faker, num_records: int) -> DataFrame:
-
     return DataFrame(
         {
             "CostCenter": gen_num_list(count=num_records, divisor=10),
@@ -352,6 +352,16 @@ def gen_dates_list(num_rows: int, low: int, high: int) -> List[str]:
     return [gen_random_date(low=low, high=high) for _ in range(num_rows)]
 
 
+def gen_batched_dates_list(
+    count: int, batch_size: int, low: int, high: int
+) -> Iterator[List[str]]:
+    it = iter((gen_random_date(low=low, high=high) for _ in range(count)))
+    # it = iter(map(str, randint(0, 2, count)))
+
+    for _ in range(0, count, batch_size):
+        yield list(safe_iter(it, batch_size))
+
+
 def format_number(n: int, divisor: int, sep: str) -> str:
     minus = "-" if n < 0 else ""
 
@@ -381,6 +391,39 @@ def gen_worktime(low: int, high: int, divisor: int = 3, sep: str = ",") -> str:
 
 def gen_worktime_list(num_rows: int, low: int, high: int) -> List[str]:
     return [gen_worktime(low=low, high=high) for _ in range(num_rows)]
+
+
+def gen_batched_worktime_list(
+    count: int, batch_size: int, low: int, high: int
+) -> Iterator[List[str]]:
+    it = iter((gen_worktime(low=low, high=high) for _ in range(count)))
+    # it = iter(map(str, randint(0, 2, count)))
+
+    for _ in range(0, count, batch_size):
+        yield list(safe_iter(it, batch_size))
+
+
+def gen_batched_working_time(
+    num_records: int,
+    batch_size: int,
+    entries_multiplier: int,
+) -> Iterator[DataFrame]:
+    num_records *= entries_multiplier
+    specs = {
+        "EmployeeId": gen_batched_num_list(
+            count=num_records, groups=entries_multiplier, batch_size=batch_size
+        ),
+        "Date": gen_batched_dates_list(
+            count=num_records, batch_size=batch_size, low=2000, high=2025
+        ),
+        "WorkingTime": gen_batched_worktime_list(
+            count=num_records, batch_size=batch_size, low=1, high=99999
+        ),
+    }
+
+    return gen_batched_dataframe(
+        specs=specs, num_records=num_records, batch_size=batch_size
+    )
 
 
 @measure_time()
@@ -423,13 +466,14 @@ def create_dataframe_config(
                 "batch_size": batch_size,
             },
         ),
-        # "working_time": (
-        #     create_working_time,
-        #     {
-        #         "num_records": num_rows * time_multi,
-        #         "worker_divisor": worker_multi,
-        #     },
-        # ),
+        "working_time": (
+            gen_batched_working_time,
+            {
+                "num_records": num_rows,
+                "batch_size": batch_size,
+                "entries_multiplier": time_multi,
+            },
+        ),
     }
 
 
@@ -450,8 +494,9 @@ def save_parquet(
     name: str,
     it: Iterator[DataFrame],
 ) -> None:
-    initial = next(it)
     output_path = output_dir / f"{name}.parquet"
+    logger.info("Saving %s into %s", name, output_path)
+    initial = next(it)
 
     recreate_parquet(data=initial, file_path=output_path)
 
@@ -468,7 +513,6 @@ def create_dataframes(
     time_multi: int,
     rand_str: Callable[[], str],
 ) -> None:
-
     config = create_dataframe_config(
         num_rows=num_rows,
         batch_size=batch_size,
@@ -496,6 +540,7 @@ class StringGenerator:
 
     def next(self) -> str:
         return next(self._iterator)
+
 
 def create_string_generator() -> Callable[[], str]:
     generator = StringGenerator()
