@@ -1,0 +1,93 @@
+[tool.poetry]
+name = "data-sandbox"
+version = "0.1.0"
+description = "Experiments in Data Warehousing and Analytics"
+authors = ["Adrian Grzemski <adrian.grzemski@gmail.com>"]
+license = "MIT Licence"
+readme = "README.md"
+# package-mode = false
+
+[tool.poetry.dependencies]
+python = "~3.13"
+polars = "^1.17.1"
+faker = "^33.1.0"
+numpy = "^2.2.0"
+pytest-cov = "^6.0.0"
+pyarrow = "^18.1.0"
+pydantic = "^2.10.4"
+gprof2dot = "^2024.6.6"
+line-profiler = "^4.2.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+black = "^24.10.0"
+mypy = "^1.13.0"
+ruff = "^0.8.3"
+isort = "^5.13.2"
+pylint = "^3.3.2"
+
+[tool.poetry.scripts]
+
+init_data = "data_sandbox.init_data:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.mypy]
+files = ["src", "scripts"]
+disallow_untyped_calls = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = false
+show_error_codes = true
+no_implicit_optional = true
+warn_unused_ignores = true
+plugins = ["pydantic.mypy"]
+
+[tool.pylint.'MESSAGES CONTROL']
+disable = [
+    "C0114", # missing-module-docstring
+    "C0115", # missing-module-docstring
+    "C0116", # missing-function-docstring,
+]
+
+[tool.isort]
+atomic = true
+profile = "black"
+line_length = 79
+skip_gitignore = true
+skip_glob = ["tests"]
+known_first_party = ["black", "blib2to3", "blackd", "_black_version"]
+
+[tool.black]
+line-length = 79
+target-version = ["py311"]
+
+[tool.pytest.ini_options]
+minversion = "8.3.4"
+addopts = "-ra -q --cov=data_sandbox --cov-report=term-missing"
+testpaths = ["tests"]
+pythonpath = ["src"]
+filterwarnings = ["error", "ignore::DeprecationWarning", "ignore::UserWarning"]
+markers = [
+    "unit: marks tests as unit tests",
+    "integration: marks tests as integration tests",
+    "benchmark: marks tests as performance benchmarks",
+]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "pass",
+]
+show_missing = true
+fail_under = 80

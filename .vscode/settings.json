@@ -1,0 +1,21 @@
+{
+    "editor.formatOnSave": true,
+    "editor.rulers": [
+        80
+    ],
+    "editor.wordWrap": "off",
+    "editor.renderWhitespace": "all",
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 100,
+    "editor.formatOnSaveMode": "file",
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "files.associations": {
+        ".env": "shellscript",
+        "*.sh": "shellscript",
+        ".secrets": "shellscript"
+    }
+}
