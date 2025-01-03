@@ -24,4 +24,3 @@ profile_init_data:
 	data \
 	-n 10000000 \
 	-b 500000
-
