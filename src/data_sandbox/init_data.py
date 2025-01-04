@@ -495,12 +495,15 @@ def save_parquet(
     it: Iterator[DataFrame],
 ) -> None:
     output_path = output_dir / f"{name}.parquet"
-    logger.info("Saving %s into %s", name, output_path)
+    logger.info("Generating initial %s dataframe", name)
     initial = next(it)
 
+
+    logger.info("Writing %s into %s", name, output_path)
     recreate_parquet(data=initial, file_path=output_path)
 
-    for data in it:
+    for i, data in enumerate(it):
+        logger.info("Appending %d into %s", i + 1, output_path)
         append_to_parquet(data, output_path)
 
 
