@@ -1,4 +1,4 @@
-package group_indexer
+package groupindexer
 
 import (
 	"fmt"
@@ -6,9 +6,9 @@ import (
 )
 
 type Indexer struct {
-	size     int
-	groups   int
-	reminder int
+	size      int
+	groups    int
+	remainder int
 }
 
 func NewIndexer(n, div int) (Indexer, error) {
@@ -21,16 +21,16 @@ func NewIndexer(n, div int) (Indexer, error) {
 
 	if n <= div {
 		return Indexer{
-			size:     1,
-			groups:   n,
-			reminder: 0,
+			size:      1,
+			groups:    n,
+			remainder: 0,
 		}, nil
 	}
 
 	return Indexer{
-		size:     div,
-		groups:   n / div,
-		reminder: n % div,
+		size:      div,
+		groups:    n / div,
+		remainder: n % div,
 	}, nil
 }
 
@@ -44,7 +44,7 @@ func (idx Indexer) Iterate() iter.Seq[int] {
 			}
 		}
 
-		for range idx.reminder {
+		for range idx.remainder {
 			if !yield(idx.groups) {
 				return
 			}
@@ -56,26 +56,26 @@ func IterateWithFunc[T any](idx Indexer, fn func() T) iter.Seq2[int, T] {
 	return func(yield func(int, T) bool) {
 		next, stop := iter.Pull(idx.Iterate())
 		defer stop()
-		last_i, ok := next()
-		i := last_i
+		lastIdx, ok := next()
+		idx := lastIdx
 
 		if !ok {
 			return
 		}
 
-		last_val := fn()
+		lastVal := fn()
 
 		for ok {
-			if i != last_i {
-				last_val = fn()
-				last_i = i
+			if idx != lastIdx {
+				lastVal = fn()
+				lastIdx = idx
 			}
 
-			if !yield(i, last_val) {
+			if !yield(idx, lastVal) {
 				return
 			}
 
-			i, ok = next()
+			idx, ok = next()
 		}
 	}
 }

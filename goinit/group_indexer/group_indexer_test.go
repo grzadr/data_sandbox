@@ -1,4 +1,4 @@
-package group_indexer
+package groupindexer
 
 import (
 	"reflect"
@@ -18,37 +18,37 @@ func TestNewIndexer(t *testing.T) {
 			name: "basic case 1:1",
 			n:    1,
 			div:  1,
-			want: Indexer{size: 1, groups: 1, reminder: 0},
+			want: Indexer{size: 1, groups: 1, remainder: 0},
 		},
 		{
 			name: "n larger than 1, div is 1",
 			n:    10,
 			div:  1,
-			want: Indexer{size: 1, groups: 10, reminder: 0},
+			want: Indexer{size: 1, groups: 10, remainder: 0},
 		},
 		{
 			name: "n is 1, div larger than 1",
 			n:    1,
 			div:  10,
-			want: Indexer{size: 1, groups: 1, reminder: 0},
+			want: Indexer{size: 1, groups: 1, remainder: 0},
 		},
 		{
 			name: "equal division",
 			n:    100,
 			div:  10,
-			want: Indexer{size: 10, groups: 10, reminder: 0},
+			want: Indexer{size: 10, groups: 10, remainder: 0},
 		},
 		{
 			name: "with reminder case 1",
 			n:    13,
 			div:  3,
-			want: Indexer{size: 3, groups: 4, reminder: 1},
+			want: Indexer{size: 3, groups: 4, remainder: 1},
 		},
 		{
 			name: "with reminder case 2",
 			n:    7,
 			div:  3,
-			want: Indexer{size: 3, groups: 2, reminder: 1},
+			want: Indexer{size: 3, groups: 2, remainder: 1},
 		},
 		{
 			name:        "negative n",
