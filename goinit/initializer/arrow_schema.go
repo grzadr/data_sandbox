@@ -18,9 +18,9 @@ func getNumField(t reflect.Type) (int, error) {
 		return 0, fmt.Errorf("can only create schema from struct type, got %v", t.Kind())
 	}
 
-	num_field := t.NumField()
+	numField := t.NumField()
 
-	if num_field < 1 {
+	if numField < 1 {
 		return 0, fmt.Errorf("struct must have at least one field")
 	}
 
@@ -33,42 +33,40 @@ type arrowFieldSpecs struct {
 	IsDate bool
 }
 
-func handleTypeSpecifier(found bool, type_specifier string) (is_date bool, err error) {
-
+func handleTypeSpecifier(found bool, typeSpecifier string) (isDate bool, err error) {
 	if !found {
-		return is_date, err
+		return isDate, err
 	}
 
-	switch type_specifier {
+	switch typeSpecifier {
 	case "date":
-		is_date = true
+		isDate = true
 	default:
-		err = fmt.Errorf("unsupported type specifier: %s", type_specifier)
+		err = fmt.Errorf("unsupported type specifier: %s", typeSpecifier)
 	}
 
-	return is_date, err
+	return isDate, err
 }
 
 func newArrowFieldSpecs(field reflect.StructField) (arrowFieldSpecs, bool, error) {
-	tag_content := field.Tag.Get("arrow")
-	if tag_content == "" {
+	tagContent := field.Tag.Get("arrow")
+	if tagContent == "" {
 		return arrowFieldSpecs{}, false, nil
 	}
 
-	arrow_name, type_specifier, found := strings.Cut(tag_content, ",")
+	arrowName, typeSpecifier, found := strings.Cut(tagContent, ",")
 
-	is_date, err := handleTypeSpecifier(found, type_specifier)
+	isDate, err := handleTypeSpecifier(found, typeSpecifier)
 
 	if err != nil {
 		return arrowFieldSpecs{}, false, err
 	}
 
 	return arrowFieldSpecs{
-		Name:   arrow_name,
+		Name:   arrowName,
 		Type:   field.Type,
-		IsDate: is_date,
+		IsDate: isDate,
 	}, true, nil
-
 }
 
 func convReflectKindToArrowDataType(kind reflect.Kind) (dataType arrow.DataType, err error) {
@@ -91,7 +89,6 @@ func convReflectKindToArrowDataType(kind reflect.Kind) (dataType arrow.DataType,
 }
 
 func (a arrowFieldSpecs) intoArrowDataType() (dataType arrow.DataType, err error) {
-
 	if a.Type == reflect.TypeOf(time.Time{}) {
 		if a.IsDate {
 			dataType = arrow.FixedWidthTypes.Date32
@@ -113,7 +110,6 @@ func (a arrowFieldSpecs) intoArrowDataType() (dataType arrow.DataType, err error
 }
 
 func (a arrowFieldSpecs) intoArrowField() (arrow.Field, error) {
-
 	dataType, err := a.intoArrowDataType()
 
 	if err != nil {
@@ -128,16 +124,16 @@ func (a arrowFieldSpecs) intoArrowField() (arrow.Field, error) {
 }
 
 func SchemaFromType(t reflect.Type) (*arrow.Schema, error) {
-	num_field, err := getNumField(t)
+	numField, err := getNumField(t)
 
 	if err != nil {
 		return nil, err
 	}
 
-	fields := make([]arrow.Field, 0, num_field)
+	fields := make([]arrow.Field, 0, numField)
 
 	for i := 0; i < t.NumField(); i++ {
-		arrow_specs, found, err := newArrowFieldSpecs(t.Field(i))
+		arrowSpecs, found, err := newArrowFieldSpecs(t.Field(i))
 
 		if err != nil {
 			return nil, err
@@ -147,13 +143,13 @@ func SchemaFromType(t reflect.Type) (*arrow.Schema, error) {
 			continue
 		}
 
-		arrow_field, err := arrow_specs.intoArrowField()
+		arrowField, err := arrowSpecs.intoArrowField()
 
 		if err != nil {
 			return nil, err
 		}
 
-		fields = append(fields, arrow_field)
+		fields = append(fields, arrowField)
 	}
 
 	if len(fields) == 0 {
