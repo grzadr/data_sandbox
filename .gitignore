@@ -163,3 +163,5 @@ cython_debug/
 
 data/
 *.pstats
+goinit/coverage/*
+goinit/bin/*
