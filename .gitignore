@@ -165,3 +165,4 @@ data/
 *.pstats
 goinit/coverage/*
 goinit/bin/*
+.DS_Store
