@@ -79,3 +79,54 @@ func IterateWithFunc[T any](idx Indexer, fn func() T) iter.Seq2[int, T] {
 		}
 	}
 }
+
+// Iterator defines the interface for pull-style iteration
+type Iterator[T any] interface {
+	// Next returns the next value in the sequence
+	// If done is false, there are no more values and value should be ignored
+	Next() (value T, done bool)
+
+	// Close cleans up any resources used by the iterator
+	Close()
+}
+
+// iteratorImpl is the concrete type that implements Iterator[T]
+type iteratorImpl[T any] struct {
+	next func() (T, bool)
+	stop func()
+}
+
+// These are the interface implementation methods:
+
+func (it *iteratorImpl[T]) Next() (value T, done bool) {
+	if it.next == nil {
+		return value, false
+	}
+	value, ok := it.next()
+	if !ok {
+		it.Close()
+		return value, false
+	}
+	return value, true
+}
+
+func (it *iteratorImpl[T]) Close() {
+	if it.stop != nil {
+		it.stop()
+		it.stop = nil
+		it.next = nil
+	}
+}
+
+// NewIterator creates an Iterator from an iter.Seq
+// It returns the interface type, but internally creates an iteratorImpl
+func NewIterator[T any](seq iter.Seq[T]) Iterator[T] {
+	next, stop := iter.Pull(seq)
+	// Create the concrete implementation
+	impl := &iteratorImpl[T]{
+		next: next,
+		stop: stop,
+	}
+	// Return it as the interface type
+	return impl
+}

@@ -11,6 +11,7 @@ import (
 	"github.com/apache/arrow/go/v17/parquet"
 	"github.com/apache/arrow/go/v17/parquet/compress"
 	"github.com/apache/arrow/go/v17/parquet/pqarrow"
+	groupindexer "github.com/grzadr/data_sandbox/goinit/group_indexer"
 )
 
 type CostCenterData struct {
@@ -22,24 +23,47 @@ type CostCenterData struct {
 }
 
 type CostCenterGenerators struct {
-	CostCenter      ValueGenerator[string]
-	CostCenterName  ValueGenerator[string]
-	Suborganisation ValueGenerator[string]
-	CompanyName     ValueGenerator[string]
-	CompanyNumber   ValueGenerator[int64]
+	CostCenter      groupindexer.Iterator[string]
+	CostCenterName  groupindexer.Iterator[string]
+	Suborganisation groupindexer.Iterator[string]
+	CompanyName     groupindexer.Iterator[string]
+	CompanyNumber   groupindexer.Iterator[int64]
 }
 
-func(gen *CostCenterGenerators) NewCostCenterData() CostCenterData {
-	return CostCenterData{
-		CostCenter:      gen.CostCenter.Generate(),
-		CostCenterName:  gen.CostCenterName.Generate(),
-		Suborganisation: gen.Suborganisation.Generate(),
-		CompanyName:     gen.CompanyName.Generate(),
-		CompanyNumber:   gen.CompanyNumber.Generate(),
+func (gen *CostCenterGenerators) NewCostCenterData() (CostCenterData, bool) {
+	costCenter, done := gen.CostCenter.Next()
+	if done {
+		return CostCenterData{}, done
 	}
+
+	costCenterName, done := gen.CostCenterName.Next()
+	if done {
+		return CostCenterData{}, done
+	}
+
+	suborganisation, done := gen.Suborganisation.Next()
+	if done {
+		return CostCenterData{}, done
+	}
+
+	companyName, done := gen.CompanyName.Next()
+	if done {
+		return CostCenterData{}, done
+	}
+
+	companyNumber, done := gen.CompanyNumber.Next()
+	if done {
+		return CostCenterData{}, done
+	}
+
+	return CostCenterData{
+		CostCenter:      costCenter,
+		CostCenterName:  costCenterName,
+		Suborganisation: suborganisation,
+		CompanyName:     companyName,
+		CompanyNumber:   companyNumber,
+	}, false
 }
-
-
 
 // PartitionWriter manages writing to a single partition
 type PartitionWriter struct {

@@ -206,3 +206,134 @@ func TestIterateWithFunc(t *testing.T) {
 		})
 	}
 }
+
+func TestIteratorSequences(t *testing.T) {
+	tests := []struct {
+		name     string
+		n        int
+		div      int
+		expected []int
+	}{
+		{
+			name:     "single element",
+			n:        1,
+			div:      1,
+			expected: []int{0},
+		},
+		{
+			name:     "seven elements divided into three groups",
+			n:        7,
+			div:      3,
+			expected: []int{0, 0, 0, 1, 1, 1, 2},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			seq, _ := NewIndexer(tt.n, tt.div)
+			iter := NewIterator(seq.Iterate())
+			defer iter.Close()
+
+			var got []int
+			for {
+				val, ok := iter.Next()
+				if !ok {
+					break
+				}
+				got = append(got, val)
+			}
+
+			// Compare lengths
+			if len(got) != len(tt.expected) {
+				t.Errorf("got %d values, want %d", len(got), len(tt.expected))
+				return
+			}
+
+			// Compare values
+			for i := range got {
+				if got[i] != tt.expected[i] {
+					t.Errorf("value at index %d = %v, want %v", i, got[i], tt.expected[i])
+				}
+			}
+		})
+	}
+}
+
+// TestIteratorEarlyBreak verifies that the iterator maintains proper state
+// when breaking early and can be recreated correctly
+func TestIteratorEarlyBreak(t *testing.T) {
+	// Create first iterator
+	seq, _ := NewIndexer(3, 1)
+	iter := NewIterator(seq.Iterate())
+	defer iter.Close()
+
+	// Get first two values
+	for i := 0; i < 2; i++ {
+		val, ok := iter.Next()
+		if !ok {
+			t.Fatal("Next() returned ok=false too early")
+		}
+		if val != i {
+			t.Errorf("value at position %d = %v, want %v", i, val, i+1)
+		}
+	}
+
+	// Close early
+	iter.Close()
+
+	// Create new iterator and verify fresh start
+	seq, _ = NewIndexer(3, 1)
+	iter = NewIterator(seq.Iterate())
+	val, ok := iter.Next()
+	if !ok || val != 0 {
+		t.Errorf("fresh iterator first value = %v, %v, want 1, true", val, ok)
+	}
+}
+
+// TestIteratorNilSafety verifies that nil and zero-value iterators behave safely
+func TestIteratorNilSafety(t *testing.T) {
+	t.Run("zero value implementation", func(t *testing.T) {
+		impl := &iteratorImpl[int]{} // zero value, not nil
+		val, ok := impl.Next()
+		if ok {
+			t.Errorf("zero value implementation Next() = %v, %v, want 0, false", val, ok)
+		}
+		// This should not panic
+		impl.Close()
+	})
+
+	t.Run("nil next function", func(t *testing.T) {
+		impl := &iteratorImpl[int]{
+			next: nil,
+			stop: func() {},
+		}
+		val, ok := impl.Next()
+		if ok {
+			t.Errorf("iterator with nil next func returned = %v, %v, want 0, false", val, ok)
+		}
+	})
+
+	t.Run("nil stop function", func(t *testing.T) {
+		impl := &iteratorImpl[int]{
+			next: func() (int, bool) { return 0, false },
+			stop: nil,
+		}
+		// This should not panic
+		impl.Close()
+	})
+
+	t.Run("closed iterator behavior", func(t *testing.T) {
+		seq, _ := NewIndexer(3, 1)
+		iter := NewIterator(seq.Iterate())
+		iter.Close()
+
+		// After closing, Next should return zero value and false
+		val, ok := iter.Next()
+		if ok {
+			t.Errorf("closed iterator Next() = %v, %v, want 0, false", val, ok)
+		}
+
+		// Multiple closes should not panic
+		iter.Close()
+	})
+}
