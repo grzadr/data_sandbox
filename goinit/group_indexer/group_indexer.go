@@ -1,41 +1,40 @@
 package groupindexer
 
 import (
-	"fmt"
 	"iter"
+	"strconv"
 )
 
 type Indexer struct {
-	size      int
-	groups    int
-	remainder int
+	size      int64
+	groups    int64
+	remainder int64
 }
 
-func NewIndexer(n, div int) (Indexer, error) {
+func NewIndexer(n, div int64) Indexer {
 	if n < 1 || div < 1 {
-		return Indexer{}, fmt.Errorf(
-			"invalid input: n=%d and div=%d must be positive",
-			n, div,
-		)
-	}
-
-	if n <= div {
+		return Indexer{
+			size:      0,
+			groups:    0,
+			remainder: 0,
+		}
+	} else if n <= div {
 		return Indexer{
 			size:      1,
 			groups:    n,
 			remainder: 0,
-		}, nil
+		}
+	} else {
+		return Indexer{
+			size:      div,
+			groups:    n / div,
+			remainder: n % div,
+		}
 	}
-
-	return Indexer{
-		size:      div,
-		groups:    n / div,
-		remainder: n % div,
-	}, nil
 }
 
-func (idx Indexer) Iterate() iter.Seq[int] {
-	return func(yield func(int) bool) {
+func (idx Indexer) Iterate() iter.Seq[int64] {
+	return func(yield func(int64) bool) {
 		for i := range idx.groups {
 			for range idx.size {
 				if !yield(i) {
@@ -52,8 +51,18 @@ func (idx Indexer) Iterate() iter.Seq[int] {
 	}
 }
 
-func IterateWithFunc[T any](idx Indexer, fn func() T) iter.Seq2[int, T] {
-	return func(yield func(int, T) bool) {
+func (idx Indexer) IterateStr() iter.Seq[string] {
+	return func(yield func(string) bool) {
+		for num := range idx.Iterate() {
+			if !yield(strconv.FormatInt(num, 10)) {
+				return
+			}
+		}
+	}
+}
+
+func IterateWithFunc[T any](idx Indexer, fn func() T) iter.Seq2[int64, T] {
+	return func(yield func(int64, T) bool) {
 		next, stop := iter.Pull(idx.Iterate())
 		defer stop()
 		lastIdx, ok := next()
@@ -76,6 +85,44 @@ func IterateWithFunc[T any](idx Indexer, fn func() T) iter.Seq2[int, T] {
 			}
 
 			idx, ok = next()
+		}
+	}
+}
+
+func IterateWithMap2[T any](idx Indexer, mapFn func(int64) T) iter.Seq2[int64, T] {
+	return func(yield func(int64, T) bool) {
+		next, stop := iter.Pull(idx.Iterate())
+		defer stop()
+		lastIdx, ok := next()
+		idx := lastIdx
+
+		if !ok {
+			return
+		}
+
+		lastVal := mapFn(idx)
+
+		for ok {
+			if idx != lastIdx {
+				lastVal = mapFn(idx)
+				lastIdx = idx
+			}
+
+			if !yield(idx, lastVal) {
+				return
+			}
+
+			idx, ok = next()
+		}
+	}
+}
+
+func IterateWithMap[T any](idx Indexer, mapFn func(int64) T) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for _, val := range IterateWithMap2(idx, mapFn) {
+			if !yield(val) {
+				return
+			}
 		}
 	}
 }
@@ -129,4 +176,16 @@ func NewIterator[T any](seq iter.Seq[T]) Iterator[T] {
 	}
 	// Return it as the interface type
 	return impl
+}
+
+func NewIndexerIterator(n, div int64) Iterator[int64] {
+	return NewIterator(NewIndexer(n, div).Iterate())
+}
+
+func NewIndexerIteratorStr(n, div int64) Iterator[string] {
+	return NewIterator(NewIndexer(n, div).IterateStr())
+}
+
+func NewIndexerIteratorWithMap[T any](n, div int64, mapFn func(int64) T) Iterator[T] {
+	return NewIterator(IterateWithMap(NewIndexer(n, div), mapFn))
 }

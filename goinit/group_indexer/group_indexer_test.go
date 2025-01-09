@@ -1,6 +1,7 @@
 package groupindexer
 
 import (
+	"fmt"
 	"reflect"
 	"slices"
 	"testing"
@@ -8,11 +9,10 @@ import (
 
 func TestNewIndexer(t *testing.T) {
 	tests := []struct {
-		name        string
-		n           int
-		div         int
-		want        Indexer
-		errContains string // Empty string means we don't expect an error
+		name string
+		n    int64
+		div  int64
+		want Indexer
 	}{
 		{
 			name: "basic case 1:1",
@@ -51,54 +51,34 @@ func TestNewIndexer(t *testing.T) {
 			want: Indexer{size: 3, groups: 2, remainder: 1},
 		},
 		{
-			name:        "negative n",
-			n:           -1,
-			div:         3,
-			errContains: "invalid input: n=-1 and div=3 must be positive",
+			name: "negative n",
+			n:    -1,
+			div:  3,
+			want: Indexer{size: 0, groups: 0, remainder: 0},
 		},
 		{
-			name:        "negative div",
-			n:           5,
-			div:         -3,
-			errContains: "invalid input: n=5 and div=-3 must be positive",
+			name: "negative div",
+			n:    5,
+			div:  -3,
+			want: Indexer{size: 0, groups: 0, remainder: 0},
 		},
 		{
-			name:        "zero n",
-			n:           0,
-			div:         3,
-			errContains: "invalid input: n=0 and div=3 must be positive",
+			name: "zero n",
+			n:    0,
+			div:  3,
+			want: Indexer{size: 0, groups: 0, remainder: 0},
 		},
 		{
-			name:        "zero div",
-			n:           5,
-			div:         0,
-			errContains: "invalid input: n=5 and div=0 must be positive",
+			name: "zero div",
+			n:    5,
+			div:  0,
+			want: Indexer{size: 0, groups: 0, remainder: 0},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewIndexer(tt.n, tt.div)
-
-			if tt.errContains != "" {
-				if err == nil {
-					t.Errorf("NewIndexer(%d, %d) expected error containing %q, got nil",
-						tt.n, tt.div, tt.errContains)
-					return
-				}
-				if err.Error() != tt.errContains {
-					t.Errorf("NewIndexer(%d, %d) error = %v, want error containing %q",
-						tt.n, tt.div, err, tt.errContains)
-				}
-				return
-			}
-
-			// At this point, we expect no error
-			if err != nil {
-				t.Errorf("NewIndexer(%d, %d) unexpected error: %v",
-					tt.n, tt.div, err)
-				return
-			}
+			got := NewIndexer(tt.n, tt.div)
 
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewIndexer(%d, %d) = %+v, want %+v",
@@ -111,40 +91,85 @@ func TestNewIndexer(t *testing.T) {
 func TestIndexerIterate(t *testing.T) {
 	tests := []struct {
 		name     string
-		n        int
-		div      int
-		expected []int
+		n        int64
+		div      int64
+		expected []int64
 	}{
+		{
+			name:     "zero",
+			n:        0,
+			div:      01,
+			expected: []int64{},
+		},
 		{
 			name:     "single element",
 			n:        1,
 			div:      1,
-			expected: []int{0},
+			expected: []int64{0},
 		},
 		{
 			name:     "seven elements divided into three groups",
 			n:        7,
 			div:      3,
-			expected: []int{0, 0, 0, 1, 1, 1, 2},
+			expected: []int64{0, 0, 0, 1, 1, 1, 2},
 		},
 		{
 			name:     "ten elements in single group",
 			n:        10,
 			div:      1,
-			expected: []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+			expected: []int64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			indexer, err := NewIndexer(tt.n, tt.div)
-			if err != nil {
-				t.Fatalf("NewIndexer(%d, %d) returned unexpected error: %v",
-					tt.n, tt.div, err)
+			indexer := NewIndexer(tt.n, tt.div)
+
+			var result []int64
+			for val := range indexer.Iterate() {
+				result = append(result, val)
 			}
 
-			var result []int
-			for val := range indexer.Iterate() {
+			if !slices.Equal(result, tt.expected) {
+				t.Errorf("Iterate() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestIndexerIterateStr(t *testing.T) {
+	tests := []struct {
+		name     string
+		n        int64
+		div      int64
+		expected []string
+	}{
+		{
+			name:     "single element",
+			n:        1,
+			div:      1,
+			expected: []string{"0"},
+		},
+		{
+			name:     "seven elements divided into three groups",
+			n:        7,
+			div:      3,
+			expected: []string{"0", "0", "0", "1", "1", "1", "2"},
+		},
+		{
+			name:     "ten elements in single group",
+			n:        10,
+			div:      1,
+			expected: []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			indexer := NewIndexer(tt.n, tt.div)
+
+			var result []string
+			for val := range indexer.IterateStr() {
 				result = append(result, val)
 			}
 
@@ -158,11 +183,18 @@ func TestIndexerIterate(t *testing.T) {
 func TestIterateWithFunc(t *testing.T) {
 	tests := []struct {
 		name     string
-		n        int
-		div      int
+		n        int64
+		div      int64
 		input    []string
 		expected []string
 	}{
+		{
+			name:     "zero",
+			n:        0,
+			div:      0,
+			input:    []string{"A", "B", "C"},
+			expected: []string{},
+		},
 		{
 			name:     "single element",
 			n:        1,
@@ -181,10 +213,7 @@ func TestIterateWithFunc(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			idx, err := NewIndexer(tt.n, tt.div)
-			if err != nil {
-				t.Fatalf("failed to create indexer: %v", err)
-			}
+			idx := NewIndexer(tt.n, tt.div)
 
 			// Create an iterator over input labels
 			pos := 0
@@ -207,34 +236,82 @@ func TestIterateWithFunc(t *testing.T) {
 	}
 }
 
-func TestIteratorSequences(t *testing.T) {
+func TestIterateWithMap(t *testing.T) {
 	tests := []struct {
 		name     string
-		n        int
-		div      int
-		expected []int
+		n        int64
+		div      int64
+		expected []string
 	}{
+		{
+			name:     "zero",
+			n:        0,
+			div:      0,
+			expected: []string{},
+		},
 		{
 			name:     "single element",
 			n:        1,
 			div:      1,
-			expected: []int{0},
+			expected: []string{"Item 1"},
 		},
 		{
-			name:     "seven elements divided into three groups",
-			n:        7,
-			div:      3,
-			expected: []int{0, 0, 0, 1, 1, 1, 2},
+			name:     "multiple groups with reminder",
+			n:        5,
+			div:      2,
+			expected: []string{"Item 1", "Item 1", "Item 2", "Item 2", "Item 3"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			seq, _ := NewIndexer(tt.n, tt.div)
-			iter := NewIterator(seq.Iterate())
+			idx := NewIndexer(tt.n, tt.div)
+
+			// Create an iterator over input labels
+			mapFn := func(i int64) string {
+				return fmt.Sprintf("Item %d", i+1)
+			}
+
+			// Collect results from iterator
+			var result []string
+			for val := range IterateWithMap(idx, mapFn) {
+				result = append(result, val)
+			}
+
+			if !slices.Equal(result, tt.expected) {
+				t.Errorf("got %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestIteratorSequences(t *testing.T) {
+	tests := []struct {
+		name     string
+		n        int64
+		div      int64
+		expected []int64
+	}{
+		{
+			name:     "single element",
+			n:        1,
+			div:      1,
+			expected: []int64{0},
+		},
+		{
+			name:     "seven elements divided into three groups",
+			n:        7,
+			div:      3,
+			expected: []int64{0, 0, 0, 1, 1, 1, 2},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			iter := NewIndexerIterator(tt.n, tt.div)
 			defer iter.Close()
 
-			var got []int
+			var got []int64
 			for {
 				val, ok := iter.Next()
 				if !ok {
@@ -263,12 +340,11 @@ func TestIteratorSequences(t *testing.T) {
 // when breaking early and can be recreated correctly
 func TestIteratorEarlyBreak(t *testing.T) {
 	// Create first iterator
-	seq, _ := NewIndexer(3, 1)
-	iter := NewIterator(seq.Iterate())
+	iter := NewIndexerIterator(3, 1)
 	defer iter.Close()
 
 	// Get first two values
-	for i := 0; i < 2; i++ {
+	for i := int64(0); i < 2; i++ {
 		val, ok := iter.Next()
 		if !ok {
 			t.Fatal("Next() returned ok=false too early")
@@ -282,8 +358,7 @@ func TestIteratorEarlyBreak(t *testing.T) {
 	iter.Close()
 
 	// Create new iterator and verify fresh start
-	seq, _ = NewIndexer(3, 1)
-	iter = NewIterator(seq.Iterate())
+	iter = NewIndexerIterator(3, 1)
 	val, ok := iter.Next()
 	if !ok || val != 0 {
 		t.Errorf("fresh iterator first value = %v, %v, want 1, true", val, ok)
@@ -323,8 +398,7 @@ func TestIteratorNilSafety(t *testing.T) {
 	})
 
 	t.Run("closed iterator behavior", func(t *testing.T) {
-		seq, _ := NewIndexer(3, 1)
-		iter := NewIterator(seq.Iterate())
+		iter := NewIndexerIterator(3, 1)
 		iter.Close()
 
 		// After closing, Next should return zero value and false
