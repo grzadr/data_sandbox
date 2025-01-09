@@ -34,27 +34,32 @@ func (gen *CostCenterGenerator) Close() {
 func (gen *CostCenterGenerator) NewCostCenterData() (CostCenterData, bool) {
 	costCenter, done := gen.CostCenter.Next()
 	if done {
-		return CostCenterData{}, done
+		fmt.Println("CostCenter is done")
+		return CostCenterData{}, true // true means done
 	}
 
 	costCenterName, done := gen.CostCenterName.Next()
 	if done {
-		return CostCenterData{}, done
+		fmt.Println("CostCenterName is done")
+		return CostCenterData{}, true
 	}
 
 	suborganisation, done := gen.Suborganisation.Next()
 	if done {
-		return CostCenterData{}, done
+		fmt.Println("Suborganisation is done")
+		return CostCenterData{}, true
 	}
 
 	companyName, done := gen.CompanyName.Next()
 	if done {
-		return CostCenterData{}, done
+		fmt.Println("CompanyName is done")
+		return CostCenterData{}, true
 	}
 
 	companyNumber, done := gen.CompanyNumber.Next()
 	if done {
-		return CostCenterData{}, done
+		fmt.Println("CompanyNumber is done")
+		return CostCenterData{}, true
 	}
 
 	return CostCenterData{
@@ -63,15 +68,17 @@ func (gen *CostCenterGenerator) NewCostCenterData() (CostCenterData, bool) {
 		Suborganisation: suborganisation,
 		CompanyName:     companyName,
 		CompanyNumber:   companyNumber,
-	}, false
+	}, false // false means not done
 }
 
 func (gen *CostCenterGenerator) Iterate(n int64) iter.Seq2[int64, CostCenterData] {
-	return func(
-		yield func(int64, CostCenterData) bool) {
+	return func(yield func(int64, CostCenterData) bool) {
+		fmt.Printf("n = %d\n", n)
 		for i := range n {
+			fmt.Printf("Iteration %d: ", i)
 			val, done := gen.NewCostCenterData()
-			if done {
+			fmt.Printf("Value %v, status %t\n", val, done)
+			if !done {
 				return
 			}
 			if !yield(i, val) {
@@ -81,7 +88,9 @@ func (gen *CostCenterGenerator) Iterate(n int64) iter.Seq2[int64, CostCenterData
 	}
 }
 
-func NewCostCenterGenerator(num_records int64, suborganisation_div int64, company_div int64) *CostCenterGenerator {
+func NewCostCenterGenerator(
+	num_records, suborganisation_div, company_div int64,
+) *CostCenterGenerator {
 	return &CostCenterGenerator{
 		CostCenter: indexer.NewIndexerIteratorStr(num_records, 1),
 		CostCenterName: indexer.NewIndexerIteratorWithMap(

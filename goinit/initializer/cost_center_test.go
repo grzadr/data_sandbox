@@ -1,6 +1,7 @@
 package initializer
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -87,6 +88,7 @@ func TestNewCostCenterGenerators(t *testing.T) {
 	// Collect generated data
 	var actual []CostCenterData
 	for i, data := range generator.Iterate(10) {
+		fmt.Printf("Generation %d: %v", i, data)
 		actual = append(actual, data)
 		// Additional check for correct index
 		if i >= 10 {
