@@ -14,34 +14,34 @@ func TestNewCostCenterGenerators(t *testing.T) {
 			CostCenterName:  "CostCenter 1",
 			Suborganisation: "Suborganisation 1",
 			CompanyName:     "CompanyName 1",
-			CompanyNumber:   0,
+			CompanyNumber:   1,
 		},
 		{
 			CostCenter:      "2",
 			CostCenterName:  "CostCenter 2",
 			Suborganisation: "Suborganisation 1",
 			CompanyName:     "CompanyName 1",
-			CompanyNumber:   0,
+			CompanyNumber:   1,
 		},
 		{
 			CostCenter:      "3",
 			CostCenterName:  "CostCenter 3",
 			Suborganisation: "Suborganisation 2",
 			CompanyName:     "CompanyName 1",
-			CompanyNumber:   0,
+			CompanyNumber:   1,
 		},
 		{
 			CostCenter:      "4",
 			CostCenterName:  "CostCenter 4",
 			Suborganisation: "Suborganisation 2",
 			CompanyName:     "CompanyName 1",
-			CompanyNumber:   0,
+			CompanyNumber:   1,
 		},
 		{
 			CostCenter:      "5",
 			CostCenterName:  "CostCenter 5",
 			Suborganisation: "Suborganisation 3",
-			CompanyName:     "CompanyName 2",
+			CompanyName:     "CompanyName 1",
 			CompanyNumber:   1,
 		},
 		{
@@ -49,34 +49,34 @@ func TestNewCostCenterGenerators(t *testing.T) {
 			CostCenterName:  "CostCenter 6",
 			Suborganisation: "Suborganisation 3",
 			CompanyName:     "CompanyName 2",
-			CompanyNumber:   1,
+			CompanyNumber:   2,
 		},
 		{
 			CostCenter:      "7",
 			CostCenterName:  "CostCenter 7",
 			Suborganisation: "Suborganisation 4",
 			CompanyName:     "CompanyName 2",
-			CompanyNumber:   1,
+			CompanyNumber:   2,
 		},
 		{
 			CostCenter:      "8",
 			CostCenterName:  "CostCenter 8",
 			Suborganisation: "Suborganisation 4",
 			CompanyName:     "CompanyName 2",
-			CompanyNumber:   1,
+			CompanyNumber:   2,
 		},
 		{
 			CostCenter:      "9",
 			CostCenterName:  "CostCenter 9",
 			Suborganisation: "Suborganisation 5",
-			CompanyName:     "CompanyName 3",
+			CompanyName:     "CompanyName 2",
 			CompanyNumber:   2,
 		},
 		{
 			CostCenter:      "10",
 			CostCenterName:  "CostCenter 10",
 			Suborganisation: "Suborganisation 5",
-			CompanyName:     "CompanyName 3",
+			CompanyName:     "CompanyName 2",
 			CompanyNumber:   2,
 		},
 	}
@@ -88,7 +88,7 @@ func TestNewCostCenterGenerators(t *testing.T) {
 	// Collect generated data
 	var actual []CostCenterData
 	for i, data := range generator.Iterate(10) {
-		fmt.Printf("Generation %d: %v", i, data)
+		fmt.Printf("Generation %d: %v\n", i, data)
 		actual = append(actual, data)
 		// Additional check for correct index
 		if i >= 10 {

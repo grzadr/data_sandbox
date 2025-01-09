@@ -3,6 +3,7 @@ package initializer
 import (
 	"fmt"
 	"iter"
+	"strconv"
 
 	indexer "github.com/grzadr/data_sandbox/goinit/group_indexer"
 )
@@ -32,34 +33,29 @@ func (gen *CostCenterGenerator) Close() {
 }
 
 func (gen *CostCenterGenerator) NewCostCenterData() (CostCenterData, bool) {
-	costCenter, done := gen.CostCenter.Next()
-	if done {
-		fmt.Println("CostCenter is done")
-		return CostCenterData{}, true // true means done
+	costCenter, ok := gen.CostCenter.Next()
+	if !ok {
+		return CostCenterData{}, ok // true means done
 	}
 
-	costCenterName, done := gen.CostCenterName.Next()
-	if done {
-		fmt.Println("CostCenterName is done")
-		return CostCenterData{}, true
+	costCenterName, ok := gen.CostCenterName.Next()
+	if !ok {
+		return CostCenterData{}, ok
 	}
 
-	suborganisation, done := gen.Suborganisation.Next()
-	if done {
-		fmt.Println("Suborganisation is done")
-		return CostCenterData{}, true
+	suborganisation, ok := gen.Suborganisation.Next()
+	if !ok {
+		return CostCenterData{}, ok
 	}
 
-	companyName, done := gen.CompanyName.Next()
-	if done {
-		fmt.Println("CompanyName is done")
-		return CostCenterData{}, true
+	companyName, ok := gen.CompanyName.Next()
+	if !ok {
+		return CostCenterData{}, ok
 	}
 
-	companyNumber, done := gen.CompanyNumber.Next()
-	if done {
-		fmt.Println("CompanyNumber is done")
-		return CostCenterData{}, true
+	companyNumber, ok := gen.CompanyNumber.Next()
+	if !ok {
+		return CostCenterData{}, ok
 	}
 
 	return CostCenterData{
@@ -68,17 +64,15 @@ func (gen *CostCenterGenerator) NewCostCenterData() (CostCenterData, bool) {
 		Suborganisation: suborganisation,
 		CompanyName:     companyName,
 		CompanyNumber:   companyNumber,
-	}, false // false means not done
+	}, true
 }
 
 func (gen *CostCenterGenerator) Iterate(n int64) iter.Seq2[int64, CostCenterData] {
 	return func(yield func(int64, CostCenterData) bool) {
 		fmt.Printf("n = %d\n", n)
 		for i := range n {
-			fmt.Printf("Iteration %d: ", i)
-			val, done := gen.NewCostCenterData()
-			fmt.Printf("Value %v, status %t\n", val, done)
-			if !done {
+			val, ok := gen.NewCostCenterData()
+			if !ok {
 				return
 			}
 			if !yield(i, val) {
@@ -92,7 +86,11 @@ func NewCostCenterGenerator(
 	num_records, suborganisation_div, company_div int64,
 ) *CostCenterGenerator {
 	return &CostCenterGenerator{
-		CostCenter: indexer.NewIndexerIteratorStr(num_records, 1),
+		CostCenter: indexer.NewIndexerIteratorWithMap(
+			num_records,
+			1,
+			func(i int64) string { return strconv.FormatInt(i+1, 10) },
+		),
 		CostCenterName: indexer.NewIndexerIteratorWithMap(
 			num_records,
 			1,
@@ -111,9 +109,10 @@ func NewCostCenterGenerator(
 			func(i int64) string {
 				return fmt.Sprintf("CompanyName %d", i+1)
 			}),
-		CompanyNumber: indexer.NewIndexerIterator(
+		CompanyNumber: indexer.NewIndexerIteratorWithMap(
 			num_records,
 			company_div,
+			func(i int64) int64 { return i + 1 },
 		),
 	}
 }
