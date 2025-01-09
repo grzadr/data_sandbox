@@ -15,7 +15,7 @@ type CostCenterData struct {
 	CompanyNumber   int64  `arrow:"company_number"`
 }
 
-type CostCenterGenerators struct {
+type CostCenterGenerator struct {
 	CostCenter      indexer.Iterator[string]
 	CostCenterName  indexer.Iterator[string]
 	Suborganisation indexer.Iterator[string]
@@ -23,7 +23,7 @@ type CostCenterGenerators struct {
 	CompanyNumber   indexer.Iterator[int64]
 }
 
-func (gen *CostCenterGenerators) Close() {
+func (gen *CostCenterGenerator) Close() {
 	gen.CostCenter.Close()
 	gen.CostCenterName.Close()
 	gen.Suborganisation.Close()
@@ -31,7 +31,7 @@ func (gen *CostCenterGenerators) Close() {
 	gen.CompanyNumber.Close()
 }
 
-func (gen *CostCenterGenerators) NewCostCenterData() (CostCenterData, bool) {
+func (gen *CostCenterGenerator) NewCostCenterData() (CostCenterData, bool) {
 	costCenter, done := gen.CostCenter.Next()
 	if done {
 		return CostCenterData{}, done
@@ -66,9 +66,9 @@ func (gen *CostCenterGenerators) NewCostCenterData() (CostCenterData, bool) {
 	}, false
 }
 
-func (gen *CostCenterGenerators) Iterate(n int) iter.Seq2[int, CostCenterData] {
+func (gen *CostCenterGenerator) Iterate(n int64) iter.Seq2[int64, CostCenterData] {
 	return func(
-		yield func(int, CostCenterData) bool) {
+		yield func(int64, CostCenterData) bool) {
 		for i := range n {
 			val, done := gen.NewCostCenterData()
 			if done {
@@ -81,8 +81,8 @@ func (gen *CostCenterGenerators) Iterate(n int) iter.Seq2[int, CostCenterData] {
 	}
 }
 
-func NewCostCenterGenerators(num_records int64) *CostCenterGenerators {
-	return &CostCenterGenerators{
+func NewCostCenterGenerator(num_records int64, suborganisation_div int64, company_div int64) *CostCenterGenerator {
+	return &CostCenterGenerator{
 		CostCenter: indexer.NewIndexerIteratorStr(num_records, 1),
 		CostCenterName: indexer.NewIndexerIteratorWithMap(
 			num_records,
@@ -92,19 +92,19 @@ func NewCostCenterGenerators(num_records int64) *CostCenterGenerators {
 			}),
 		Suborganisation: indexer.NewIndexerIteratorWithMap(
 			num_records,
-			1,
+			suborganisation_div,
 			func(i int64) string {
 				return fmt.Sprintf("Suborganisation %d", i+1)
 			}),
 		CompanyName: indexer.NewIndexerIteratorWithMap(
 			num_records,
-			1,
+			company_div,
 			func(i int64) string {
 				return fmt.Sprintf("CompanyName %d", i+1)
 			}),
 		CompanyNumber: indexer.NewIndexerIterator(
 			num_records,
-			1,
+			company_div,
 		),
 	}
 }
