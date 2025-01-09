@@ -35,7 +35,7 @@ func (gen *CostCenterGenerator) Close() {
 func (gen *CostCenterGenerator) NewCostCenterData() (CostCenterData, bool) {
 	costCenter, ok := gen.CostCenter.Next()
 	if !ok {
-		return CostCenterData{}, ok // true means done
+		return CostCenterData{}, ok
 	}
 
 	costCenterName, ok := gen.CostCenterName.Next()
