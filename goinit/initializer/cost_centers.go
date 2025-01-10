@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"iter"
 	"strconv"
+	"reflect"
 
 	indexer "github.com/grzadr/data_sandbox/goinit/group_indexer"
 )
@@ -117,3 +118,15 @@ func NewCostCenterGenerator(
 	}
 }
 
+func WriteCostCenterParquet(
+	overwrite bool,
+) error {
+	schema, err := SchemaFromType(reflect.TypeOf(CostCenterData{}))
+    if err != nil {
+        return err
+    }
+
+	return nil
+
+
+}

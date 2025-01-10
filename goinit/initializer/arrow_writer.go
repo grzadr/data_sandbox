@@ -98,7 +98,31 @@ type StreamingParquetWriter struct {
 	arrowProps   *pqarrow.ArrowWriterProperties
 }
 
-func NewStreamingParquetWriter(schema *arrow.Schema, outputDir string, maxBatchSize int64) *StreamingParquetWriter {
+func cleanupDirectory(dir string, overwrite bool) error {
+    if _, err := os.Stat(dir); !os.IsNotExist(err) && !overwrite {
+		return fmt.Errorf(
+			"Directory %s already exists and overwrite is disabled",
+		)
+    }
+
+	if err := os.RemoveAll(dir); err != nil {
+        return fmt.Errorf("cleanup failed: %v", err)
+    }
+
+    // Create fresh directory
+    if err := os.MkdirAll(dir, 0755); err != nil {
+        return fmt.Errorf("failed to create fresh directory: %v", err)
+    }
+
+    return nil
+}
+
+func NewStreamingParquetWriter(
+	schema *arrow.Schema,
+	outputDir string,
+	maxBatchSize int64,
+	overwrite bool,
+) *StreamingParquetWriter {
 	arrowProps := pqarrow.NewArrowWriterProperties(
 		pqarrow.WithStoreSchema(),
 	)
@@ -117,7 +141,9 @@ func NewStreamingParquetWriter(schema *arrow.Schema, outputDir string, maxBatchS
 	}
 }
 
-func (spw *StreamingParquetWriter) getOrCreateWriter(partition string) (*PartitionWriter, error) {
+func (spw *StreamingParquetWriter) getOrCreateWriter(
+	partition string,
+) (*PartitionWriter, error) {
 	if writer, exists := spw.writers[partition]; exists {
 		return writer, nil
 	}
