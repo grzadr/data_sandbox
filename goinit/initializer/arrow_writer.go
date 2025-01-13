@@ -99,22 +99,22 @@ type StreamingParquetWriter struct {
 }
 
 func cleanupDirectory(dir string, overwrite bool) error {
-    if _, err := os.Stat(dir); !os.IsNotExist(err) && !overwrite {
+	if _, err := os.Stat(dir); !os.IsNotExist(err) && !overwrite {
 		return fmt.Errorf(
-			"Directory %s already exists and overwrite is disabled",
+			"Directory %s already exists and overwrite is disabled", dir,
 		)
-    }
+	}
 
 	if err := os.RemoveAll(dir); err != nil {
-        return fmt.Errorf("cleanup failed: %v", err)
-    }
+		return fmt.Errorf("cleanup failed: %v", err)
+	}
 
-    // Create fresh directory
-    if err := os.MkdirAll(dir, 0755); err != nil {
-        return fmt.Errorf("failed to create fresh directory: %v", err)
-    }
+	// Create fresh directory
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create fresh directory: %v", err)
+	}
 
-    return nil
+	return nil
 }
 
 func NewStreamingParquetWriter(

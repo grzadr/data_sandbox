@@ -143,10 +143,9 @@ func WriteCostCenterParquet(
 
 	for _, data := range generator.Iterate(numRecords) {
 		if err := writer.WriteRecord(data); err != nil {
-            return err
-        }
+			return err
+		}
 	}
-
 
 	return nil
 }
