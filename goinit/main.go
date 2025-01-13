@@ -6,9 +6,9 @@ import (
 
 func main() {
 	if err := initializer.WriteCostCenterParquet(
-		"../data_go",
+		"../data_go/cost_centers",
 		true,
-		1000000,
+		2000000,
 		10000000,
 	); err != nil {
 		panic(err)

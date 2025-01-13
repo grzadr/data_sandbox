@@ -24,45 +24,100 @@ type PartitionWriter struct {
 
 // recordBuilder manages column builders for a single record batch
 type recordBuilder struct {
-	pool            *memory.GoAllocator
-	schema          *arrow.Schema
-	costCenter      *array.StringBuilder
-	costCenterName  *array.StringBuilder
-	suborganisation *array.StringBuilder
-	companyName     *array.StringBuilder
-	companyNumber   *array.Int64Builder
-	count           int64
+	pool     *memory.GoAllocator
+	schema   *arrow.Schema
+	builders []*array.Builder
+	// costCenter      *array.StringBuilder
+	// costCenterName  *array.StringBuilder
+	// suborganisation *array.StringBuilder
+	// companyName     *array.StringBuilder
+	// companyNumber   *array.Int64Builder
+	count int64
 }
 
-func newRecordBuilder(pool *memory.GoAllocator, schema *arrow.Schema) *recordBuilder {
-	return &recordBuilder{
-		pool:            pool,
-		schema:          schema,
-		costCenter:      array.NewStringBuilder(pool),
-		costCenterName:  array.NewStringBuilder(pool),
-		suborganisation: array.NewStringBuilder(pool),
-		companyName:     array.NewStringBuilder(pool),
-		companyNumber:   array.NewInt64Builder(pool),
-		count:           0,
+func createBuilderForField(field arrow.Field, pool memory.Allocator) (array.Builder, error) {
+	switch field.Type.ID() {
+	case arrow.STRING:
+		return array.NewStringBuilder(pool), nil
+	case arrow.INT8:
+		return array.NewInt8Builder(pool), nil
+	case arrow.INT16:
+		return array.NewInt16Builder(pool), nil
+	case arrow.INT32:
+		return array.NewInt32Builder(pool), nil
+	case arrow.INT64:
+		return array.NewInt64Builder(pool), nil
+	case arrow.UINT8:
+		return array.NewUint8Builder(pool), nil
+	case arrow.UINT16:
+		return array.NewUint16Builder(pool), nil
+	case arrow.UINT32:
+		return array.NewUint32Builder(pool), nil
+	case arrow.UINT64:
+		return array.NewUint64Builder(pool), nil
+	case arrow.FLOAT32:
+		return array.NewFloat32Builder(pool), nil
+	case arrow.FLOAT64:
+		return array.NewFloat64Builder(pool), nil
+	case arrow.BOOL:
+		return array.NewBooleanBuilder(pool), nil
+	case arrow.TIMESTAMP:
+		return array.NewTimestampBuilder(
+			pool,
+			field.Type.(*arrow.TimestampType),
+		), nil
+	case arrow.DATE32:
+		return array.NewDate32Builder(pool), nil
+	case arrow.DATE64:
+		return array.NewDate64Builder(pool), nil
+	// Add other types as needed
+	default:
+		return nil, fmt.Errorf("unsupported arrow type: %s", field.Type.Name())
 	}
 }
 
-func (rb *recordBuilder) append(data CostCenterData) {
-	rb.costCenter.Append(data.CostCenter)
-	rb.costCenterName.Append(data.CostCenterName)
-	rb.suborganisation.Append(data.Suborganisation)
-	rb.companyName.Append(data.CompanyName)
-	rb.companyNumber.Append(data.CompanyNumber)
+func newRecordBuilder(
+	pool *memory.GoAllocator,
+	schema *arrow.Schema,
+) (*recordBuilder, error) {
+
+	fields := schema.Fields()
+	builders := make([]*array.Builder, len(fields))
+
+	for i, field := range fields {
+		builder, err := createBuilderForField(field, pool)
+		if err != nil {
+			for j := 0; j < i; j++ {
+				(*builders[j]).Release()
+			}
+			return nil, fmt.Errorf("failed to create builder for field %s: %w", field.Name, err)
+		}
+		builders[i] = &builder
+	}
+
+	return &recordBuilder{
+		pool:     pool,
+		schema:   schema,
+		builders: builders,
+		count:    0,
+	}, nil
+}
+
+func (rb *recordBuilder) append(data DataRow) error {
+	for i, b := range rb.builders {
+		if err := (*b).AppendValueFromString(data.getStringValue(i)); err != nil {
+			return err
+		}
+	}
 	rb.count++
+	return nil
 }
 
 func (rb *recordBuilder) build() arrow.Record {
-	cols := []arrow.Array{
-		rb.costCenter.NewArray(),
-		rb.costCenterName.NewArray(),
-		rb.suborganisation.NewArray(),
-		rb.companyName.NewArray(),
-		rb.companyNumber.NewArray(),
+	cols := make([]arrow.Array, len(rb.builders))
+
+	for i, b := range rb.builders {
+		cols[i] = (*b).NewArray()
 	}
 
 	// Create record batch
@@ -80,22 +135,26 @@ func (rb *recordBuilder) build() arrow.Record {
 }
 
 func (rb *recordBuilder) release() {
-	rb.costCenter.Release()
-	rb.costCenterName.Release()
-	rb.suborganisation.Release()
-	rb.companyName.Release()
-	rb.companyNumber.Release()
+	for _, b := range rb.builders {
+		(*b).Release()
+	}
+	// rb.costCenter.Release()
+	// rb.costCenterName.Release()
+	// rb.suborganisation.Release()
+	// rb.companyName.Release()
+	// rb.companyNumber.Release()
 }
 
 // StreamingParquetWriter manages multiple partition writers
 type StreamingParquetWriter struct {
-	pool         *memory.GoAllocator
-	schema       *arrow.Schema
-	writers      map[string]*PartitionWriter
-	outputDir    string
-	maxBatchSize int64
-	writeProps   *parquet.WriterProperties
-	arrowProps   *pqarrow.ArrowWriterProperties
+	pool          *memory.GoAllocator
+	schema        *arrow.Schema
+	writers       map[string]*PartitionWriter
+	outputDir     string
+	maxBatchSize  int64
+	writeProps    *parquet.WriterProperties
+	arrowProps    *pqarrow.ArrowWriterProperties
+	partitionName string
 }
 
 func cleanupDirectory(dir string, overwrite bool) error {
@@ -109,7 +168,6 @@ func cleanupDirectory(dir string, overwrite bool) error {
 		return fmt.Errorf("cleanup failed: %v", err)
 	}
 
-	// Create fresh directory
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create fresh directory: %v", err)
 	}
@@ -122,6 +180,7 @@ func NewStreamingParquetWriter(
 	outputDir string,
 	maxBatchSize int64,
 	overwrite bool,
+	partitionName string,
 ) *StreamingParquetWriter {
 	arrowProps := pqarrow.NewArrowWriterProperties(
 		pqarrow.WithStoreSchema(),
@@ -137,7 +196,8 @@ func NewStreamingParquetWriter(
 			parquet.WithCompression(compress.Codecs.Zstd),
 			parquet.WithDictionaryDefault(true),
 		),
-		arrowProps: &arrowProps,
+		arrowProps:    &arrowProps,
+		partitionName: partitionName,
 	}
 }
 
@@ -148,7 +208,11 @@ func (spw *StreamingParquetWriter) getOrCreateWriter(
 		return writer, nil
 	}
 
-	partitionDir := filepath.Join(spw.outputDir, fmt.Sprintf("suborganisation=%s", partition))
+	partitionDir := filepath.Join(
+		spw.outputDir,
+		fmt.Sprintf("%s=%s", spw.partitionName, partition),
+	)
+
 	if err := os.MkdirAll(partitionDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create partition directory: %w", err)
 	}
@@ -170,28 +234,36 @@ func (spw *StreamingParquetWriter) getOrCreateWriter(
 		return nil, fmt.Errorf("failed to create parquet writer: %w", err)
 	}
 
+	builder, err := newRecordBuilder(spw.pool, spw.schema)
+
+	if err != nil {
+		file.Close()
+		return nil, fmt.Errorf("failed to create a builder: %w", err)
+	}
+
 	pw := &PartitionWriter{
 		writer:       writer,
 		file:         file,
-		builder:      newRecordBuilder(spw.pool, spw.schema),
+		builder:      builder,
 		maxBatchSize: spw.maxBatchSize,
 	}
-
 	spw.writers[partition] = pw
 	return pw, nil
 }
 
-func (spw *StreamingParquetWriter) WriteRecord(data CostCenterData) error {
-	writer, err := spw.getOrCreateWriter(data.Suborganisation)
+func (spw *StreamingParquetWriter) WriteRecord(data DataRow) error {
+	writer, err := spw.getOrCreateWriter(data.partition())
 	if err != nil {
 		return err
 	}
 
-	writer.builder.append(data)
+	if err := writer.builder.append(data); err != nil {
+		return err
+	}
 	writer.recordCount++
 
 	if writer.recordCount >= writer.maxBatchSize {
-		if err := spw.flushPartition(data.Suborganisation); err != nil {
+		if err := spw.flushPartition(data.partition()); err != nil {
 			return err
 		}
 	}

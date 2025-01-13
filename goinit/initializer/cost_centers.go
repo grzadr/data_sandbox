@@ -9,12 +9,38 @@ import (
 	indexer "github.com/grzadr/data_sandbox/goinit/group_indexer"
 )
 
+type DataRow interface {
+	partition() string
+	getStringValue(i int) string
+}
+
 type CostCenterData struct {
 	CostCenter      string `arrow:"cost_center"`
 	CostCenterName  string `arrow:"cost_center_name"`
 	Suborganisation string `arrow:"suborganisation"`
 	CompanyName     string `arrow:"company_name"`
 	CompanyNumber   int64  `arrow:"company_number"`
+}
+
+func (c *CostCenterData) partition() string {
+	return strconv.FormatInt(c.CompanyNumber, 10)
+}
+
+func (c *CostCenterData) getStringValue(i int) string {
+	switch i {
+	case 0:
+		return c.CostCenter
+	case 1:
+		return c.CostCenterName
+	case 2:
+		return c.Suborganisation
+	case 3:
+		return c.CompanyName
+	case 4:
+		return strconv.FormatInt(c.CompanyNumber, 10)
+	default:
+		return ""
+	}
 }
 
 type CostCenterGenerator struct {
@@ -135,14 +161,20 @@ func WriteCostCenterParquet(
 		return err
 	}
 
-	writer := NewStreamingParquetWriter(schema, outputDir, batchSize, overwrite)
+	writer := NewStreamingParquetWriter(
+		schema,
+		outputDir,
+		batchSize,
+		overwrite,
+		"suborganisation",
+	)
 	defer writer.Close()
 
 	generator := NewCostCenterGenerator(numRecords, 10000, 100000)
 	defer generator.Close()
 
 	for _, data := range generator.Iterate(numRecords) {
-		if err := writer.WriteRecord(data); err != nil {
+		if err := writer.WriteRecord(&data); err != nil {
 			return err
 		}
 	}
