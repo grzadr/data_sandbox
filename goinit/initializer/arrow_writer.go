@@ -27,12 +27,7 @@ type recordBuilder struct {
 	pool     *memory.GoAllocator
 	schema   *arrow.Schema
 	builders []*array.Builder
-	// costCenter      *array.StringBuilder
-	// costCenterName  *array.StringBuilder
-	// suborganisation *array.StringBuilder
-	// companyName     *array.StringBuilder
-	// companyNumber   *array.Int64Builder
-	count int64
+	count    int64
 }
 
 func createBuilderForField(field arrow.Field, pool memory.Allocator) (array.Builder, error) {
@@ -138,11 +133,6 @@ func (rb *recordBuilder) release() {
 	for _, b := range rb.builders {
 		(*b).Release()
 	}
-	// rb.costCenter.Release()
-	// rb.costCenterName.Release()
-	// rb.suborganisation.Release()
-	// rb.companyName.Release()
-	// rb.companyNumber.Release()
 }
 
 // StreamingParquetWriter manages multiple partition writers

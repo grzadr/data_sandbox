@@ -9,11 +9,6 @@ import (
 	indexer "github.com/grzadr/data_sandbox/goinit/group_indexer"
 )
 
-type DataRow interface {
-	partition() string
-	getStringValue(i int) string
-}
-
 type CostCenterData struct {
 	CostCenter      string `arrow:"cost_center"`
 	CostCenterName  string `arrow:"cost_center_name"`
