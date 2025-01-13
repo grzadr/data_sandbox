@@ -1,6 +1,7 @@
 package main
 
 import (
+	"path/filepath"
 	"github.com/grzadr/data_sandbox/goinit/initializer"
 )
 
@@ -9,10 +10,12 @@ func main() {
 	baseNumRecords := int64(10000000)
 	employeeMulti := int64(1000)
 	seed := uint64(42)
+	mainDir := "../data_go"
+	overwrite := true
 
 	if err := initializer.WriteCostCenterParquet(
-		"../data_go/cost_centers",
-		true,
+		filepath.Join(mainDir, "cost_centers"),
+		overwrite,
 		batchSize,
 		baseNumRecords,
 	); err != nil {
@@ -20,8 +23,8 @@ func main() {
 	}
 
 	if err := initializer.WriteEmployeesParquet(
-		"../data_go/cost_centers",
-		true,
+		filepath.Join(mainDir, "employees"),
+		overwrite,
 		batchSize,
 		baseNumRecords,
 		employeeMulti,
