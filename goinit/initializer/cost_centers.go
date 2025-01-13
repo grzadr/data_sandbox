@@ -3,8 +3,8 @@ package initializer
 import (
 	"fmt"
 	"iter"
-	"strconv"
 	"reflect"
+	"strconv"
 
 	indexer "github.com/grzadr/data_sandbox/goinit/group_indexer"
 )
@@ -84,49 +84,69 @@ func (gen *CostCenterGenerator) Iterate(n int64) iter.Seq2[int64, CostCenterData
 }
 
 func NewCostCenterGenerator(
-	num_records, suborganisation_div, company_div int64,
+	numRecords, suborganisationDiv, companyDiv int64,
 ) *CostCenterGenerator {
 	return &CostCenterGenerator{
 		CostCenter: indexer.NewIndexerIteratorWithMap(
-			num_records,
+			numRecords,
 			1,
 			func(i int64) string { return strconv.FormatInt(i+1, 10) },
 		),
 		CostCenterName: indexer.NewIndexerIteratorWithMap(
-			num_records,
+			numRecords,
 			1,
 			func(i int64) string {
 				return fmt.Sprintf("CostCenter %d", i+1)
 			}),
 		Suborganisation: indexer.NewIndexerIteratorWithMap(
-			num_records,
-			suborganisation_div,
+			numRecords,
+			suborganisationDiv,
 			func(i int64) string {
 				return fmt.Sprintf("Suborganisation %d", i+1)
 			}),
 		CompanyName: indexer.NewIndexerIteratorWithMap(
-			num_records,
-			company_div,
+			numRecords,
+			companyDiv,
 			func(i int64) string {
 				return fmt.Sprintf("CompanyName %d", i+1)
 			}),
 		CompanyNumber: indexer.NewIndexerIteratorWithMap(
-			num_records,
-			company_div,
+			numRecords,
+			companyDiv,
 			func(i int64) int64 { return i + 1 },
 		),
 	}
 }
 
 func WriteCostCenterParquet(
+	outputDir string,
 	overwrite bool,
+	batchSize int64,
+	numRecords int64,
 ) error {
 	schema, err := SchemaFromType(reflect.TypeOf(CostCenterData{}))
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
+
+	err = cleanupDirectory(outputDir, overwrite)
+
+	if err != nil {
+		return err
+	}
+
+	writer := NewStreamingParquetWriter(schema, outputDir, batchSize, overwrite)
+	defer writer.Close()
+
+	generator := NewCostCenterGenerator(numRecords, 10000, 100000)
+	defer generator.Close()
+
+	for _, data := range generator.Iterate(numRecords) {
+		if err := writer.WriteRecord(data); err != nil {
+            return err
+        }
+	}
+
 
 	return nil
-
-
 }
