@@ -117,15 +117,12 @@ func NewWorkingTimeGenerator(
 			1,
 			func(i int64) string {
 				return newRandomDate(date_rand, 2020, 2025)
-				// return FormatDate(2020, 1)
 			}),
 		Hours: indexer.NewIndexerIteratorWithMap(
 			numRecords,
 			1,
 			func(i int64) float64 {
 				return float64(1+hours_rand.IntN(10000)) * hours_rand.Float64()
-				// return 1.0
-
 			}),
 	}
 }
