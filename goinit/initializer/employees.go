@@ -2,6 +2,7 @@ package initializer
 
 import (
 	"fmt"
+	"github.com/grzadr/data_sandbox/goinit/timer"
 	"iter"
 	"math/rand/v2"
 	"reflect"
@@ -92,7 +93,6 @@ func (gen *EmployeesGenerator) NewCostCenterData() (EmployeesData, bool) {
 
 func (gen *EmployeesGenerator) Iterate(n int64) iter.Seq2[int64, EmployeesData] {
 	return func(yield func(int64, EmployeesData) bool) {
-		fmt.Printf("n = %d\n", n)
 		for i := range n {
 			val, ok := gen.NewCostCenterData()
 			if !ok {
@@ -147,6 +147,7 @@ func WriteEmployeesParquet(
 	costCenterDiv int64,
 	seed uint64,
 ) error {
+	defer timer.NewTimer("Employees").Stop()
 	schema, err := SchemaFromType(reflect.TypeOf(EmployeesData{}))
 	if err != nil {
 		return err

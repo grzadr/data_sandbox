@@ -3,9 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"path/filepath"
 
 	"github.com/grzadr/data_sandbox/goinit/initializer"
+	"github.com/grzadr/data_sandbox/goinit/timer"
 )
 
 type Config struct {
@@ -47,7 +49,7 @@ func parseConfig() (*Config, error) {
 	flag.StringVar(
 		&cfg.MainDir,
 		"dir",
-		"../data_go",
+		"data_go",
 		"Main directory for output",
 	)
 	flag.BoolVar(
@@ -59,7 +61,6 @@ func parseConfig() (*Config, error) {
 
 	flag.Parse()
 
-	// Optional: Add validation logic
 	if cfg.BatchSize <= 0 {
 		return nil, fmt.Errorf(
 			"batch size must be positive, got %d",
@@ -77,9 +78,10 @@ func parseConfig() (*Config, error) {
 }
 
 func main() {
+	defer timer.NewTimer("Main").Stop()
 	cfg, err := parseConfig()
 	if err != nil {
-		panic(fmt.Sprintf("failed to parse configuration: %v", err))
+		log.Fatalf("failed to parse configuration: %v", err)
 	}
 
 	if err := initializer.WriteCostCenterParquet(
@@ -88,7 +90,7 @@ func main() {
 		cfg.BatchSize,
 		cfg.BaseNumRecords,
 	); err != nil {
-		panic(fmt.Sprintf("failed to write cost centers: %v", err))
+		log.Fatalf("failed to write cost centers: %v", err)
 	}
 
 	if err := initializer.WriteEmployeesParquet(
@@ -99,6 +101,6 @@ func main() {
 		cfg.EmployeeMulti,
 		cfg.Seed,
 	); err != nil {
-		panic(fmt.Sprintf("failed to write employees: %v", err))
+		log.Fatalf("failed to write employees: %v", err)
 	}
 }

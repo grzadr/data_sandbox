@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	indexer "github.com/grzadr/data_sandbox/goinit/group_indexer"
+	"github.com/grzadr/data_sandbox/goinit/timer"
 )
 
 type CostCenterData struct {
@@ -91,7 +92,6 @@ func (gen *CostCenterGenerator) NewCostCenterData() (CostCenterData, bool) {
 
 func (gen *CostCenterGenerator) Iterate(n int64) iter.Seq2[int64, CostCenterData] {
 	return func(yield func(int64, CostCenterData) bool) {
-		fmt.Printf("n = %d\n", n)
 		for i := range n {
 			val, ok := gen.NewCostCenterData()
 			if !ok {
@@ -145,6 +145,7 @@ func WriteCostCenterParquet(
 	batchSize int64,
 	numRecords int64,
 ) error {
+	defer timer.NewTimer("Cost Centers").Stop()
 	schema, err := SchemaFromType(reflect.TypeOf(CostCenterData{}))
 	if err != nil {
 		return err
