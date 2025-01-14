@@ -11,12 +11,13 @@ import (
 )
 
 type Config struct {
-	BatchSize      int64
-	BaseNumRecords int64
-	EmployeeMulti  int64
-	Seed           uint64
-	MainDir        string
-	Overwrite      bool
+	BatchSize        int64
+	BaseNumRecords   int64
+	EmployeeMulti    int64
+	WorkingTimeMulti int64
+	Seed             uint64
+	MainDir          string
+	Overwrite        bool
 }
 
 func parseConfig() (*Config, error) {
@@ -37,6 +38,12 @@ func parseConfig() (*Config, error) {
 	flag.Int64Var(
 		&cfg.EmployeeMulti,
 		"employee-multi",
+		1000,
+		"Employee multiplier",
+	)
+	flag.Int64Var(
+		&cfg.WorkingTimeMulti,
+		"workingtime-multi",
 		1000,
 		"Employee multiplier",
 	)
@@ -103,4 +110,16 @@ func main() {
 	); err != nil {
 		log.Fatalf("failed to write employees: %v", err)
 	}
+
+	if err := initializer.WriteWorkingTimeParquet(
+		filepath.Join(cfg.MainDir, "working_time"),
+		cfg.Overwrite,
+		cfg.BatchSize,
+		cfg.BaseNumRecords,
+		cfg.EmployeeMulti*cfg.WorkingTimeMulti,
+		cfg.Seed,
+	); err != nil {
+		log.Fatalf("failed to write working time: %v", err)
+	}
+
 }

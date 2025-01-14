@@ -22,6 +22,16 @@ type PartitionWriter struct {
 	maxBatchSize int64
 }
 
+func (pw *PartitionWriter) Close() error {
+	if err := pw.writer.Close(); err != nil {
+		return fmt.Errorf("failed to close writer: %w", err)
+	}
+	if err := pw.file.Close(); err != nil {
+		return fmt.Errorf("failed to close file: %w", err)
+	}
+	return nil
+}
+
 // recordBuilder manages column builders for a single record batch
 type recordBuilder struct {
 	pool     *memory.GoAllocator
@@ -145,6 +155,7 @@ type StreamingParquetWriter struct {
 	writeProps    *parquet.WriterProperties
 	arrowProps    *pqarrow.ArrowWriterProperties
 	partitionName string
+	lastPartition string
 }
 
 func cleanupDirectory(dir string, overwrite bool) error {
@@ -196,6 +207,23 @@ func (spw *StreamingParquetWriter) getOrCreateWriter(
 ) (*PartitionWriter, error) {
 	if writer, exists := spw.writers[partition]; exists {
 		return writer, nil
+	}
+
+	if writer, exists := spw.writers[spw.lastPartition]; exists {
+		spw.lastPartition = partition
+		if err := writer.Close(); err != nil {
+			return nil, fmt.Errorf(
+				"Failed to close previous writer %s: %w",
+				spw.lastPartition,
+				err,
+			)
+		}
+
+	} else if spw.lastPartition != "" {
+		return nil, fmt.Errorf(
+			"Failed to find previous writer %s",
+			spw.lastPartition,
+		)
 	}
 
 	partitionDir := filepath.Join(

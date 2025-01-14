@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/grzadr/data_sandbox/goinit/timer"
 	"iter"
+	"log"
 	"math/rand/v2"
 	"reflect"
 	"strconv"
@@ -148,6 +149,8 @@ func WriteEmployeesParquet(
 	seed uint64,
 ) error {
 	defer timer.NewTimer("Employees").Stop()
+	numRecords = numRecords * costCenterDiv
+	log.Printf("Employees: Generating %d records", numRecords)
 	schema, err := SchemaFromType(reflect.TypeOf(EmployeesData{}))
 	if err != nil {
 		return err
@@ -169,9 +172,10 @@ func WriteEmployeesParquet(
 	defer writer.Close()
 
 	generator := NewEmployeesGenerator(
-		numRecords*costCenterDiv,
+		numRecords,
 		costCenterDiv,
-		seed)
+		seed,
+	)
 	defer generator.Close()
 
 	for _, data := range generator.Iterate(numRecords) {

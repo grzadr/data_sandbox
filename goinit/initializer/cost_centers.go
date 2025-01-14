@@ -3,6 +3,7 @@ package initializer
 import (
 	"fmt"
 	"iter"
+	"log"
 	"reflect"
 	"strconv"
 
@@ -146,6 +147,7 @@ func WriteCostCenterParquet(
 	numRecords int64,
 ) error {
 	defer timer.NewTimer("Cost Centers").Stop()
+	log.Printf("Cost Centers: Generating %d records", numRecords)
 	schema, err := SchemaFromType(reflect.TypeOf(CostCenterData{}))
 	if err != nil {
 		return err

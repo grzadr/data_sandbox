@@ -30,5 +30,5 @@ init_data:
 
 init_data_go: build_goinit
 	goinit/bin/goinit \
-	--base-records 10000000 \
+	--base-records 100 \
 	--dir data_go
