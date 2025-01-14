@@ -13,9 +13,6 @@ all: test build
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
 
-build: $(BIN_DIR)
-	$(GOBUILD) -o $(BIN_DIR)/$(BINARY_NAME) -v
-
 lint:
 	go fmt $(SRC_DIR)
 	golangci-lint run
@@ -31,6 +28,9 @@ test-cover: test
 clean:
 	$(GOCLEAN)
 	rm -rf $(BIN_DIR)
+
+build: $(BIN_DIR) test
+	$(GOBUILD) -o $(BIN_DIR)/$(BINARY_NAME) -v
 
 run: build
 	./$(BIN_DIR)/$(BINARY_NAME)

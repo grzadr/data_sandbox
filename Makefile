@@ -16,7 +16,10 @@ pytest:
 
 test: lint pytest
 
-profile_init_data:
+build_goinit:
+	make -C goinit build
+
+init_data:
 	$(RUN) python \
 	-m cProfile \
 	-o output_filename.pstats \
@@ -24,3 +27,8 @@ profile_init_data:
 	data \
 	-n 10000000 \
 	-b 500000
+
+init_data_go: build_goinit
+	goinit/bin/goinit \
+	--base-records 10000000 \
+	--dir data_go
